@@ -1064,40 +1064,67 @@
     );
   }
 
-  // Render the print doc in a hidden iframe and open the print dialog — no
-  // popup window or extra tab. The iframe is removed after printing.
+  // Open the printable page (as a blob URL, so it has its own origin and isn't
+  // blocked or stripped by the page's CSP) in a new tab; a tiny embedded script
+  // auto-opens the print dialog and closes the tab afterward. Falls back to an
+  // off-screen iframe if the popup is blocked.
   function printSummary() {
     if (!lastSummaryRaw) return;
-    const html = buildPrintDoc();
+    const baseHtml = buildPrintDoc();
+    const printScript =
+      '<script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print();},250);});' +
+      'window.addEventListener("afterprint",function(){window.close();});<\/script>';
+    const html = baseHtml.replace("</body>", printScript + "</body>");
+
+    let url = null;
+    try {
+      url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    } catch (_) {
+      url = null;
+    }
+    if (url) {
+      const win = window.open(url, "_blank");
+      if (win) {
+        setTimeout(() => {
+          try {
+            URL.revokeObjectURL(url);
+          } catch (_) {
+            /* ignore */
+          }
+        }, 60000);
+        return;
+      }
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    // Popup blocked or blob unavailable → off-screen iframe (opener drives print).
+    printViaIframe(baseHtml);
+  }
+
+  // Fallback used only if the popup is blocked: a rendered (off-screen) iframe.
+  function printViaIframe(html) {
     const iframe = document.createElement("iframe");
     iframe.setAttribute("aria-hidden", "true");
     iframe.style.cssText =
-      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-
-    const win = iframe.contentWindow;
-    let removed = false;
-    const cleanup = () => {
-      if (removed) return;
-      removed = true;
-      setTimeout(() => iframe.remove(), 200);
-    };
-    win.addEventListener("afterprint", cleanup);
-    // Give the document a moment to lay out, then open the print dialog.
-    setTimeout(() => {
+      "position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;";
+    iframe.onload = () => {
+      const win = iframe.contentWindow;
       try {
         win.focus();
         win.print();
       } catch (_) {
         iframe.remove();
+        return;
       }
-    }, 350);
-    setTimeout(cleanup, 60000); // safety net if afterprint never fires
+      const cleanup = () => setTimeout(() => iframe.remove(), 200);
+      win.addEventListener("afterprint", cleanup);
+      setTimeout(cleanup, 60000);
+    };
+    iframe.srcdoc = html;
+    document.body.appendChild(iframe);
   }
 
   // Extract the article. Returns { title, text, lang } or null.
