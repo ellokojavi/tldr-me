@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# Editor / tooling
+.claude/
+.vscode/
+node_modules/
+
+# web-ext build output
+web-ext-artifacts/
+*.zip
+*.xpi
