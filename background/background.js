@@ -135,25 +135,51 @@ function dominantScript(text) {
   return bestCount > 0 ? best : null;
 }
 
-const CJK_CHAR = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+// "Suspect" non-Latin scripts that indicate wrong-language contamination when
+// they appear in text that shouldn't contain them. Latin is intentionally NOT
+// here (loanwords/brand names/proper nouns appear in Latin across languages),
+// and Greek is omitted (math/science Latin articles legitimately use π, μ, σ…).
+const FOREIGN_SCRIPTS = {
+  cjk: /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu,
+  cyrillic: /\p{Script=Cyrillic}/gu,
+  arabic: /\p{Script=Arabic}/gu,
+  hebrew: /\p{Script=Hebrew}/gu,
+  devanagari: /\p{Script=Devanagari}/gu,
+  thai: /\p{Script=Thai}/gu,
+};
 
-// True if `summary` is in the wrong language relative to the article. This
-// catches two cases:
-//   1. The whole summary is in a different script (dominant-script mismatch).
-//   2. The article is NOT CJK but the summary contains ANY CJK characters
-//      (the common MiniMax leak: stray Chinese words inside an English answer).
+// Group han/kana/hangul into one "cjk" family so a Japanese article (han+kana)
+// isn't flagged against itself.
+function scriptFamily(script) {
+  if (script === "han" || script === "kana" || script === "hangul") return "cjk";
+  return script; // latin, cyrillic, arabic, hebrew, devanagari, thai, or null
+}
+
+// Count characters from a suspect script that does NOT match the article's own
+// family — i.e. genuine foreign-language contamination (Russian words inside a
+// Spanish answer, stray Chinese inside English, etc.).
+function foreignCharCount(text, articleScript) {
+  const family = scriptFamily(articleScript);
+  let count = 0;
+  for (const [name, re] of Object.entries(FOREIGN_SCRIPTS)) {
+    if (name === family) continue; // same family as the article → allowed
+    const m = (text || "").match(re);
+    if (m) count += m.length;
+  }
+  return count;
+}
+
+// True if `summary` is in the wrong language relative to the article:
+//   1. The whole text is in a different dominant script, OR
+//   2. It contains foreign-script characters that don't belong (any amount of
+//      Cyrillic/CJK/Arabic/… inside a Spanish/English/etc. answer).
 function languageMismatch(articleScript, summary) {
   if (!summary) return false;
   if (articleScript) {
     const got = dominantScript(summary);
     if (got && got !== articleScript) return true;
   }
-  const articleIsCjk =
-    articleScript === "han" ||
-    articleScript === "kana" ||
-    articleScript === "hangul";
-  if (!articleIsCjk && CJK_CHAR.test(summary)) return true;
-  return false;
+  return foreignCharCount(summary, articleScript) > 0;
 }
 
 // Human-readable language name for the strict retry instruction.
@@ -499,19 +525,35 @@ async function handleDiscuss({ title, text, lang }) {
     (lang ? `Article language: ${lang}\n` : "") +
     `\nArticle text:\n${article}`;
 
-  const res = await requestModel({
-    endpoint: config.endpoint,
-    apiKey: config.apiKey,
-    model: config.model,
-    maxTokens: 2048,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-  });
-  if (!res.ok) return res;
-  if (!res.summary) {
-    return { ok: false, error: "NO_CONTENT", message: "No questions came back." };
+  // Same language guard as the summary path: retry once if the output mixes in
+  // foreign-script words (e.g. Russian/Chinese fragments inside Spanish).
+  const articleScript = dominantScript(article);
+  const langLabel = languageName(lang);
+  const target = langLabel ? `${langLabel} (the article's language)` : "the article's language";
+  const escalations = [
+    "",
+    `\n\nCRITICAL: Write EVERY question and perspective entirely in ${target}. Do NOT ` +
+      `mix in any words or characters from another language — no Cyrillic/Russian, ` +
+      `Chinese, Japanese, Korean, Arabic, etc. unless the article itself is in that language.`,
+  ];
+
+  let res = null;
+  for (let i = 0; i < escalations.length; i++) {
+    res = await requestModel({
+      endpoint: config.endpoint,
+      apiKey: config.apiKey,
+      model: config.model,
+      maxTokens: 2048,
+      messages: [
+        { role: "system", content: systemPrompt + escalations[i] },
+        { role: "user", content: userPrompt },
+      ],
+    });
+    if (!res.ok) return res;
+    if (!res.summary) {
+      return { ok: false, error: "NO_CONTENT", message: "No questions came back." };
+    }
+    if (!languageMismatch(articleScript, res.summary)) break;
   }
   return { ok: true, text: res.summary };
 }
