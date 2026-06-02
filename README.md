@@ -279,7 +279,7 @@ HTML-escaped or static templates).
 
 ## Changelog
 
-### Unreleased
+### 1.3.0
 
 - **Print / save as PDF** — a Print button that lays out the summary, the
   Go-deeper questions, and the full article (document structure preserved) on

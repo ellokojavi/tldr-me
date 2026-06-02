@@ -5,15 +5,19 @@ Readability, and summarizes them via MiniMax or Gemini (OpenAI-compatible APIs).
 
 ## Push rules
 
-**Before every `git push`, review `README.md` and make sure it is up to date.**
+**Before every `git push`, review the ENTIRE `README.md` for consistency and
+accuracy — not just the sections touched by this push.**
 
-- Check whether the commits being pushed change anything user-facing — features,
-  settings, supported providers/models, permissions, UI labels, usage steps — and
-  update the README to match before pushing.
+- Read the whole README and check every part for drift: intro/pitch, features,
+  "How it works", install/config steps, usage table, project structure, privacy,
+  limitations, changelog, version references, links, and the screenshot.
+- Update anything the pushed commits changed — features, settings, supported
+  providers/models, permissions, UI labels, usage steps — and fix any pre-existing
+  inconsistency you notice while reviewing.
 - Keep the GitHub repository **description** ("subtitle") in sync with the README
   when supported providers/models or the core pitch change.
-- Only push once the README accurately reflects the current behavior. If nothing
-  user-facing changed, no README edit is needed — just confirm it's still correct.
+- Only push once the README is internally consistent and accurately reflects the
+  current behavior.
 
 ## Conventions
 
