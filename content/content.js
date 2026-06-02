@@ -231,15 +231,20 @@
       #${PANEL_ID} button.asz-share-btn .asz-caret { font-size: 10px; opacity: 0.85; margin-left: 1px; }
       #${PANEL_ID} .asz-wa-wrap { position: relative; display: inline-flex; }
       #${PANEL_ID} .asz-wa-menu {
-        display: none; position: absolute; top: calc(100% + 4px); right: 0;
-        z-index: 5; min-width: 190px; padding: 4px; background: #ffffff;
-        border: 1px solid #e2e8f0; border-radius: 8px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+        display: none; position: absolute; top: calc(100% + 6px); left: 0;
+        z-index: 5; min-width: 196px; padding: 5px; background: #ffffff;
+        border: 1px solid #e2e8f0; border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.16);
       }
       #${PANEL_ID} .asz-wa-menu.asz-open { display: flex; flex-direction: column; }
+      #${PANEL_ID} .asz-wa-menu-title {
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.04em; color: #a0aec0; padding: 6px 10px 4px;
+      }
       #${PANEL_ID} .asz-wa-menu button {
         background: transparent; color: #1a202c; border: none; text-align: left;
-        padding: 8px 10px; border-radius: 6px; font-size: 13px; cursor: pointer;
+        padding: 9px 10px; border-radius: 6px; font-size: 13px; line-height: 1.3;
+        cursor: pointer; white-space: nowrap; width: 100%;
       }
       #${PANEL_ID} .asz-wa-menu button:hover { background: #edf2f7; }
       #${PANEL_ID} .asz-body p { margin: 0 0 10px; }
@@ -648,6 +653,7 @@
       WHATSAPP_ICON +
       `Share<span class="asz-caret" aria-hidden="true">▾</span></button>` +
       `<div class="asz-wa-menu" data-asz="wa-menu">` +
+      `<div class="asz-wa-menu-title">Share to WhatsApp</div>` +
       `<button data-asz="wa-tldr">TL;DR only</button>` +
       `<button data-asz="wa-full">TL;DR + Key points</button>` +
       `</div>` +
