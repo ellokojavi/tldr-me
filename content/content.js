@@ -343,6 +343,11 @@
         display: block; font-size: 13px; font-weight: 600; color: #4a5568; margin-top: 4px;
       }
       #${PANEL_ID} .asz-settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      #${PANEL_ID} .asz-status {
+        font-size: 12px; color: #2f855a; margin: 10px 0 0; font-weight: 600;
+      }
+      #${PANEL_ID} .asz-status:empty { margin: 0; }
+      /* Declared last so it wins when an element has both status + error. */
       #${PANEL_ID} .asz-field-error {
         font-size: 12px; color: #c53030; margin: 8px 0 0; font-weight: 600;
       }
@@ -550,7 +555,7 @@
           ? `<button class="asz-secondary" data-asz="cancel-settings">Back to summary</button>`
           : "") +
         `</div>` +
-        `<p class="asz-note" data-asz="settings-status"></p>` +
+        `<p class="asz-status" data-asz="settings-status"></p>` +
         `</div>`
     );
 
