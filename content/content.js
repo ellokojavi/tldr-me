@@ -747,19 +747,20 @@
       .trim();
   }
 
-  // Open the installed WhatsApp app via its URL scheme with the chosen text
-  // prefilled; the user picks the recipient inside WhatsApp. `variant` is
-  // "tldr" (TL;DR only) or "full" (TL;DR + key points). Both include the URL.
+  // Share the chosen text to WhatsApp with the full summary prefilled; the user
+  // picks the recipient inside WhatsApp. `variant` is "tldr" (TL;DR only) or
+  // "full" (TL;DR + key points). Both include the article URL.
+  //
+  // Uses the official https://wa.me/?text= link, which reliably carries the
+  // whole multi-line message (the whatsapp:// scheme dropped everything but the
+  // URL on desktop). On mobile this opens the app; on desktop it opens WhatsApp
+  // (app or web) with the message ready to send.
   function shareWhatsApp(variant) {
     if (!lastSummaryRaw) return;
     const body = variant === "tldr" ? extractTldrSection(lastSummaryRaw) : lastSummaryRaw;
     const text = toWhatsAppText(body) + lastSourceLine;
-    const a = document.createElement("a");
-    a.href = "whatsapp://send?text=" + encodeURIComponent(text);
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const url = "https://wa.me/?text=" + encodeURIComponent(text);
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   // Extract the article. Returns { title, text, lang } or null.

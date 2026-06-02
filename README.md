@@ -260,8 +260,8 @@ HTML-escaped or static templates).
   aren't caught by the language guard — it detects cross-script contamination
   (the CJK-in-Latin case). Add a word-level language detector if you need this.
 - Very long articles are truncated (~48k characters) before summarizing.
-- WhatsApp sharing uses the `whatsapp://` scheme, so it requires the WhatsApp
-  app/handler to be registered.
+- WhatsApp sharing opens the official `https://wa.me/?text=` link (app on mobile,
+  app or web on desktop) with the summary prefilled; you pick the recipient.
 
 ---
 
