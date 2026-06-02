@@ -362,6 +362,8 @@ async function handleSummarize({ title, text, lang }) {
     "(1. 2. 3.) under an appropriate translated '## ' heading instead of or in addition to bullets.\n" +
     "Use '**bold**' to highlight key terms or names, sparingly. " +
     "Do not write any preamble before the first heading, and no closing remarks.\n" +
+    "Write with correct spelling, grammar, accents/diacritics, and punctuation for that " +
+    "language, and proofread your text before answering. " +
     "Write EVERY part of the response — headings, bullets, and sentences — in the article's " +
     "language only. Do not mix in words or characters from any other language; in particular, " +
     "do NOT use Chinese/Japanese/Korean characters unless the article itself is in that language.";
@@ -438,6 +440,13 @@ async function handleSummarize({ title, text, lang }) {
     return { ok: false, error: "NO_CONTENT", message: "The API returned no summary text." };
   }
 
+  // Proofreading pass: a cheap second call (just the summary, not the article)
+  // that fixes spelling/grammar/accents without changing meaning or structure.
+  if (res.summary) {
+    const corrected = await proofread(config, res.summary, articleScript);
+    if (corrected) res.summary = corrected;
+  }
+
   return {
     ok: true,
     summary: res.summary,
@@ -447,6 +456,37 @@ async function handleSummarize({ title, text, lang }) {
     outputTruncated: res.finishReason === "length",
     sourceLabel: sourceLabel(lang, article),
   };
+}
+
+// Correct spelling/grammar/accents in an already-written Markdown summary,
+// preserving meaning, structure, and language. Returns the corrected text, or
+// null if the pass failed or produced something suspicious (so the caller keeps
+// the original).
+async function proofread(config, summary, articleScript) {
+  const sys =
+    "You are a meticulous proofreader. Correct ONLY spelling, grammar, " +
+    "accent/diacritic, and punctuation mistakes in the user's Markdown text. " +
+    "Do NOT change the meaning, the wording (beyond fixing errors), the " +
+    "structure, the headings (keep '## TL;DR' exactly), the bullet markers, or " +
+    "the language. Preserve the Markdown exactly. Return ONLY the corrected " +
+    "text — no preamble, no commentary, no code fences.";
+  const r = await requestModel({
+    endpoint: config.endpoint,
+    apiKey: config.apiKey,
+    model: config.model,
+    maxTokens: 4096,
+    messages: [
+      { role: "system", content: sys },
+      { role: "user", content: summary },
+    ],
+  });
+  if (!r.ok || !r.summary) return null;
+  // Reject if the proofread was cut off, changed the language, or dropped a lot
+  // of content (a sign it rewrote/truncated rather than just fixing errors).
+  if (r.finishReason === "length") return null;
+  if (languageMismatch(articleScript, r.summary)) return null;
+  if (r.summary.trim().length < summary.trim().length * 0.6) return null;
+  return r.summary.trim();
 }
 
 // Single call to an OpenAI-compatible chat-completions API (MiniMax or Gemini).

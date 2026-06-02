@@ -79,6 +79,10 @@ details.
 - **Structured Markdown summary.** A highlighted **TL;DR** box plus a
   **Key points** section with proper bullets, numbered steps, headings, and
   bold emphasis.
+- **Proofread for quality.** The summary is generated with a strict
+  spelling/grammar/accents instruction, then run through a quick second pass
+  that fixes any orthographic errors without changing meaning, structure, or
+  language (skipped if it would alter content). Runs once per article (cached).
 - **Language-faithful.** The summary is written in the article's language. A
   built-in guard detects wrong-language output (the common "answered in
   Chinese" failure) and automatically retries with escalating constraints — the
