@@ -228,11 +228,11 @@
       #${PANEL_ID} {
         position: fixed; top: 0; right: 0; height: 100vh; width: 380px;
         max-width: 90vw; color: #1a202c;
-        /* Translucent frosted pane: you can sense content behind it, but the
-           light blur keeps text crisp and high-contrast. */
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(2.5px) saturate(1.05);
-        -webkit-backdrop-filter: blur(2.5px) saturate(1.05);
+        /* Lightly frosted pane: a faint hint of what's behind, but mostly
+           opaque so text stays high-contrast and easy to read. */
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(4px) saturate(1.05);
+        -webkit-backdrop-filter: blur(4px) saturate(1.05);
         box-shadow: -2px 0 16px rgba(0,0,0,0.18); z-index: 2147483647;
         display: flex; flex-direction: column;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
