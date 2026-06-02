@@ -991,9 +991,48 @@
 
   // ---- Print / save-as-PDF ----
 
+  // Turn Readability's structured HTML into clean, print-friendly markup:
+  // keep the document structure (paragraphs, headings, lists, quotes) but strip
+  // media (often lazy-loaded / broken in print), scripts, and inline
+  // styles/classes/handlers. Falls back to paragraph-split plain text.
+  function articleHtmlForPrint(contentHtml, text) {
+    if (contentHtml) {
+      try {
+        const tmp = document.createElement("div");
+        tmp.innerHTML = contentHtml; // setting innerHTML never executes scripts
+        tmp
+          .querySelectorAll(
+            "script,style,noscript,img,picture,source,figure,figcaption," +
+              "video,audio,iframe,svg,canvas,button,form,input,object,embed,link"
+          )
+          .forEach((el) => el.remove());
+        // Strip presentational/JS attributes; keep structural ones like href.
+        tmp.querySelectorAll("*").forEach((el) => {
+          for (const attr of Array.from(el.attributes)) {
+            const n = attr.name.toLowerCase();
+            if (n === "style" || n === "class" || n === "id" || n.startsWith("on")) {
+              el.removeAttribute(attr.name);
+            }
+          }
+        });
+        const out = tmp.innerHTML.trim();
+        if (out) return out;
+      } catch (_) {
+        /* fall through to plain-text */
+      }
+    }
+    const paras = (text || "")
+      .split(/\n+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((p) => `<p>${escapeHtml(p)}</p>`)
+      .join("");
+    return paras || `<p><em>The full article text could not be extracted.</em></p>`;
+  }
+
   // Build a standalone, print-friendly HTML document: title + source, the
   // summary (TL;DR + Key points), the "Go deeper" questions & perspectives if
-  // generated, then a divider and the full article text.
+  // generated, then a divider and the full article (with its structure intact).
   function buildPrintDoc() {
     const article = extractArticle(); // {title, text, lang} or null
     const docTitle =
@@ -1013,17 +1052,9 @@
       }
     }
 
-    let articleHtml;
-    if (article && article.text) {
-      articleHtml = article.text
-        .split(/\n+/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((p) => `<p>${escapeHtml(p)}</p>`)
-        .join("");
-    } else {
-      articleHtml = `<p><em>The full article text could not be extracted.</em></p>`;
-    }
+    const articleHtml = article
+      ? articleHtmlForPrint(article.contentHtml, article.text)
+      : `<p><em>The full article text could not be extracted.</em></p>`;
 
     const css =
       `*{box-sizing:border-box}` +
@@ -1043,8 +1074,18 @@
       `.p-prov-q{font-style:italic;font-weight:600;color:#4a5568;margin:0 0 6px}` +
       `.p-prov-a{font-size:14px;color:#2d3748}.p-prov-a p{margin:0 0 6px}` +
       `.p-divider{border:none;border-top:2px dashed #cbd5e0;margin:28px 0}` +
+      // Full article: keep the document's structure, styled neutrally.
+      `.p-article{font-size:15px}` +
       `.p-article p{margin:0 0 12px}` +
-      `@media print{a{color:#1a202c;text-decoration:none}}`;
+      `.p-article h1,.p-article h2,.p-article h3,.p-article h4,.p-article h5,.p-article h6{color:#1a202c;line-height:1.3;margin:20px 0 8px}` +
+      `.p-article h1{font-size:21px}.p-article h2{font-size:18px}.p-article h3{font-size:16px}.p-article h4,.p-article h5,.p-article h6{font-size:15px}` +
+      `.p-article ul,.p-article ol{padding-left:24px;margin:0 0 12px}.p-article li{margin:0 0 6px}` +
+      `.p-article blockquote{margin:0 0 14px;padding:4px 0 4px 14px;border-left:3px solid #cbd5e0;color:#4a5568;font-style:italic}` +
+      `.p-article a{color:#2b6cb0}` +
+      `.p-article pre{white-space:pre-wrap;background:#f7fafc;padding:10px;border-radius:6px;overflow:auto}` +
+      `.p-article code{background:#f1f5f9;padding:1px 4px;border-radius:4px;font-size:13px}` +
+      `.p-article figure,.p-article table{margin:0 0 14px;max-width:100%}` +
+      `@media print{a{color:#1a202c;text-decoration:none}.p-article{font-size:12pt}}`;
 
     return (
       `<!DOCTYPE html><html lang="${escapeAttr(
@@ -1142,6 +1183,7 @@
       return {
         title: result.title || document.title || "",
         text: result.textContent.trim(),
+        contentHtml: result.content || "", // structured HTML, used for printing
         lang: document.documentElement.lang || "",
       };
     } catch (e) {
