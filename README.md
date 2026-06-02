@@ -10,6 +10,11 @@ next to the article. You can copy it or send it to a friend on WhatsApp.
 It works in the language the article is written in, and you bring your own free
 AI key from either **MiniMax** or **Google Gemini** (more on that below).
 
+![TL;DR Me summarizing an article in its in-page side panel](docs/screenshot.jpg)
+
+*TL;DR Me reading an article and showing the TL;DR box plus Key points in the
+side panel.*
+
 ---
 
 ## Try it on your computer (no coding needed)
