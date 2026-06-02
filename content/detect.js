@@ -14,6 +14,11 @@
   const TAB_ID = "article-summarizer-tab";
   const PANEL_ID = "article-summarizer-panel";
 
+  // Only act on real web pages. This avoids decorating our own generated pages
+  // (the print view is a blob: URL) and other non-article contexts like
+  // about:/data:/file: with the TL;DR tab.
+  if (!/^https?:$/i.test(location.protocol)) return;
+
   function injectTabStyles() {
     if (document.getElementById("article-summarizer-tab-styles")) return;
     const style = document.createElement("style");
