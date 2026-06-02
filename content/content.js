@@ -980,7 +980,10 @@
   function shareWhatsApp(variant) {
     if (!lastSummaryRaw) return;
     const body = variant === "tldr" ? extractTldrSection(lastSummaryRaw) : lastSummaryRaw;
-    const text = toWhatsAppText(body) + lastSourceLine;
+    // Footer goes LAST so WhatsApp builds its link preview from the article URL
+    // (which appears earlier in lastSourceLine), not from the GitHub link.
+    const footer = "\n\n(summarized with TL;DR Me: https://github.com/ellokojavi/tldr-me)";
+    const text = toWhatsAppText(body) + lastSourceLine + footer;
     const a = document.createElement("a");
     a.href = "whatsapp://send?text=" + encodeURIComponent(text);
     a.style.display = "none";
