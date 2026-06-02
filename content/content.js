@@ -616,7 +616,7 @@
     if (firstInput) firstInput.focus();
   }
 
-  function showSummary(title, summary, thinking, truncated, url, langWarning, sourceLabel) {
+  function showSummary(title, summary, thinking, truncated, url, langWarning, sourceLabel, outputTruncated) {
     const srcLabel = sourceLabel || "Source";
     lastSummaryRaw = summary || "";
     lastSourceLine = url ? `\n\n${srcLabel}: ${url}` : "";
@@ -626,6 +626,11 @@
     if (langWarning) {
       html +=
         `<div class="asz-warn">⚠ This summary may not be in the article's language. ` +
+        `Use ↻ to try again.</div>`;
+    }
+    if (outputTruncated) {
+      html +=
+        `<div class="asz-warn">⚠ The summary may be cut short (the model hit its length limit). ` +
         `Use ↻ to try again.</div>`;
     }
     // Share subsection: Copy + a WhatsApp button with a "what to share" menu.
@@ -799,7 +804,8 @@
           resp.truncated,
           cleanUrl(),
           resp.langWarning,
-          resp.sourceLabel
+          resp.sourceLabel,
+          resp.outputTruncated
         );
       } else if (resp.error === "NO_API_KEY") {
         showApiKeyForm(resp.message);

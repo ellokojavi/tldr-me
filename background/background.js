@@ -392,13 +392,15 @@ async function handleSummarize({ title, text, lang }) {
 
   let res = null;
   let langWarning = false;
+  let usedSystem = systemPrompt;
   for (let i = 0; i < escalations.length; i++) {
+    usedSystem = systemPrompt + escalations[i];
     res = await requestModel({
       endpoint: config.endpoint,
       apiKey: config.apiKey,
       model: config.model,
       messages: [
-        { role: "system", content: systemPrompt + escalations[i] },
+        { role: "system", content: usedSystem },
         { role: "user", content: userPrompt },
       ],
     });
@@ -412,6 +414,26 @@ async function handleSummarize({ title, text, lang }) {
     langWarning = true; // still wrong; loop will try the next escalation
   }
 
+  // Output truncation: a verbose reasoning model can hit the token cap after
+  // the TL;DR but before the Key points. If so, retry once with a much larger
+  // budget so the full answer fits.
+  if (res.summary && res.finishReason === "length") {
+    const retry = await requestModel({
+      endpoint: config.endpoint,
+      apiKey: config.apiKey,
+      model: config.model,
+      maxTokens: 8192,
+      messages: [
+        { role: "system", content: usedSystem },
+        { role: "user", content: userPrompt },
+      ],
+    });
+    if (retry.ok && retry.summary) {
+      res = retry;
+      langWarning = languageMismatch(articleScript, retry.summary);
+    }
+  }
+
   if (!res.summary && !res.thinking) {
     return { ok: false, error: "NO_CONTENT", message: "The API returned no summary text." };
   }
@@ -422,13 +444,17 @@ async function handleSummarize({ title, text, lang }) {
     thinking: res.thinking,
     truncated,
     langWarning,
+    outputTruncated: res.finishReason === "length",
     sourceLabel: sourceLabel(lang, article),
   };
 }
 
 // Single call to an OpenAI-compatible chat-completions API (MiniMax or Gemini).
-// Returns { ok, summary, thinking } or { ok:false, error, message }.
-async function requestModel({ endpoint, apiKey, model, messages }) {
+// Returns { ok, summary, thinking, finishReason } or { ok:false, error, message }.
+// max_tokens must be generous: reasoning models spend output tokens "thinking"
+// before the answer, so a low cap can truncate the answer (e.g. TL;DR present
+// but Key points cut off).
+async function requestModel({ endpoint, apiKey, model, messages, maxTokens = 4096 }) {
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
@@ -440,7 +466,7 @@ async function requestModel({ endpoint, apiKey, model, messages }) {
         model,
         messages,
         temperature: 0.3,
-        max_tokens: 1024,
+        max_tokens: maxTokens,
         stream: false,
       }),
     });
@@ -465,8 +491,9 @@ async function requestModel({ endpoint, apiKey, model, messages }) {
       return { ok: false, error: "API_ERROR", message: String(apiMsg) };
     }
 
-    const choiceMsg =
-      (data && data.choices && data.choices[0] && data.choices[0].message) || {};
+    const choice = (data && data.choices && data.choices[0]) || {};
+    const choiceMsg = choice.message || {};
+    const finishReason = choice.finish_reason || "";
 
     // Reasoning models emit their chain-of-thought either inline in
     // <think>...</think> tags or in a separate reasoning_content field.
@@ -479,7 +506,7 @@ async function requestModel({ endpoint, apiKey, model, messages }) {
       return { ok: false, error: "NO_CONTENT", message: "The API returned no summary text." };
     }
 
-    return { ok: true, summary: text, thinking };
+    return { ok: true, summary: text, thinking, finishReason };
   } catch (err) {
     return {
       ok: false,
