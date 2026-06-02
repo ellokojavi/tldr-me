@@ -225,9 +225,10 @@
       }
       #${PANEL_ID} button.asz-share-btn:hover { background: #2c5282; }
       #${PANEL_ID} button.asz-share-btn.asz-copied { background: #38a169; }
-      #${PANEL_ID} button.asz-share-btn.asz-wa { background: #25d366; color: #0b3d1f; }
+      #${PANEL_ID} button.asz-share-btn.asz-wa { background: #25d366; color: #ffffff; }
       #${PANEL_ID} button.asz-share-btn.asz-wa:hover { background: #1fb457; }
-      #${PANEL_ID} button.asz-share-btn svg { width: 15px; height: 15px; display: block; }
+      #${PANEL_ID} button.asz-share-btn svg { width: 16px; height: 16px; display: block; }
+      #${PANEL_ID} button.asz-share-btn .asz-caret { font-size: 10px; opacity: 0.85; margin-left: 1px; }
       #${PANEL_ID} .asz-wa-wrap { position: relative; display: inline-flex; }
       #${PANEL_ID} .asz-wa-menu {
         display: none; position: absolute; top: calc(100% + 4px); right: 0;
@@ -645,7 +646,7 @@
       `<div class="asz-wa-wrap">` +
       `<button class="asz-share-btn asz-wa" data-asz="whatsapp" title="Share via WhatsApp" aria-haspopup="true">` +
       WHATSAPP_ICON +
-      `WhatsApp ▾</button>` +
+      `Share<span class="asz-caret" aria-hidden="true">▾</span></button>` +
       `<div class="asz-wa-menu" data-asz="wa-menu">` +
       `<button data-asz="wa-tldr">TL;DR only</button>` +
       `<button data-asz="wa-full">TL;DR + Key points</button>` +

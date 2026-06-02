@@ -63,7 +63,7 @@ fully quit it — just repeat this step next time, or see
    icon).
 3. The first time, it asks for your AI key — pick your provider, paste the key
    from step 2, and click **Save & summarize**.
-4. Read your summary! Use **Copy** or **WhatsApp** to share it.
+4. Read your summary! Use **Copy** or the green WhatsApp **Share** button.
 
 That's it. The rest of this document is for people who want the technical
 details.
@@ -197,7 +197,7 @@ Packaging and signing the extension removes this caveat entirely.
 |--------|-----|
 | Summarize | Click the on-page **TL;DR** tab or the toolbar icon |
 | Copy | **Copy** button in the Share row (turns into "Copied" for 5s) |
-| Share to WhatsApp | **WhatsApp** button → choose "TL;DR only" or "TL;DR + Key points" (link always included) |
+| Share to WhatsApp | the green WhatsApp **Share** button → choose "TL;DR only" or "TL;DR + Key points" (link always included) |
 | Re-summarize (fresh) | **↻** in the panel header — ignores the saved copy |
 | Collapse | **→** in the header → panel slides away, tab returns |
 | Settings | **⚙** in the header |
