@@ -76,8 +76,9 @@
   const TRACKING_PARAM =
     /^(utm_|fbclid$|gclid$|gclsrc$|dclid$|msclkid$|mc_cid$|mc_eid$|igshid$|_ga$|yclid$|_hsenc$|_hsmi$|vero_id$|oly_enc_id$|oly_anon_id$|ref_src$|guccounter$|guce_referrer|spm$|scm$)/i;
 
-  // Produce a clean URL to share: prefer the page's canonical link, then drop
-  // the #fragment and known tracking parameters.
+  // Produce a clean URL to share: prefer the page's canonical link, unwrap
+  // archive/proxy wrappers to the real article URL, then drop the #fragment and
+  // known tracking parameters.
   function cleanUrl() {
     let href = location.href;
     try {
@@ -88,6 +89,7 @@
     } catch (_) {
       /* ignore */
     }
+    href = unwrapUrl(href);
     try {
       const u = new URL(href);
       u.hash = "";
@@ -98,6 +100,28 @@
     } catch (_) {
       return href;
     }
+  }
+
+  // Unwrap archive/proxy URLs that embed the original article URL
+  // (e.g. archive.is/<ts>/https://nytimes.com/…, web.archive.org/web/…,
+  // 12ft.io/proxy?q=https://…). Returns the inner URL. Besides being the real
+  // article link, this removes the nested "https://" that breaks WhatsApp's
+  // text sharing (it collapses such messages to just the URL).
+  function unwrapUrl(href) {
+    try {
+      // Inner URL embedded in the path: take from the first nested scheme.
+      const inPath = href.match(/^https?:\/\/[^?#]*?(https?:\/\/.+)$/i);
+      if (inPath) return decodeURIComponent(inPath[1]);
+      // Inner URL passed as a query value: ?url=… / ?q=… / ?u=…
+      const q = href.match(/[?&](?:url|u|q|target)=([^&]+)/i);
+      if (q) {
+        const decoded = decodeURIComponent(q[1]);
+        if (/^https?:\/\//i.test(decoded)) return decoded;
+      }
+    } catch (_) {
+      /* fall through */
+    }
+    return href;
   }
 
   // Inline Markdown: **bold**, __bold__, *italic*. Escapes HTML first.

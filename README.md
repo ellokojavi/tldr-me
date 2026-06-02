@@ -93,7 +93,8 @@ details.
   Chinese" failure) and automatically retries with escalating constraints — the
   **Key points** heading and the **Source** label are localized too.
 - **Clean source link.** The article URL is appended (canonical link preferred,
-  tracking params stripped) and travels with the copied/shared text.
+  archive/proxy wrappers like `archive.is/…/https://…` unwrapped to the real
+  article, tracking params stripped) and travels with the copied/shared text.
 - **Share.** Copy to clipboard, or open the installed **WhatsApp** app with the
   summary prefilled — choose to send just the **TL;DR** or the **TL;DR + key
   points**; either way the article link is included.
