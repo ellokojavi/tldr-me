@@ -273,6 +273,32 @@ HTML-escaped or static templates).
 
 ---
 
+## Changelog
+
+### 1.2.0
+
+- **Gemini** added as a selectable provider alongside MiniMax — switch in
+  ⚙ Settings; the first key you add becomes the default.
+- **Go deeper**: opt-in reader provocations (3 article-specific questions) with
+  tap-to-reveal perspectives.
+- **Summaries cached per URL** — reloads/revisits are instant and free; **↻**
+  forces a fresh one.
+- **Proofreading pass** + spelling-aware prompt for cleaner output.
+- **Stronger language guard** — keeps both the summary and the provocations in
+  the article's language, catching stray Chinese/Cyrillic/other-script
+  fragments and retrying.
+- **WhatsApp share** with a choice of *TL;DR only* or *TL;DR + Key points*;
+  archive/proxy URLs (e.g. `archive.is/…/https://…`) unwrapped to the real link.
+- **API-key format validation** for both providers.
+- Localized UI labels (en/es/pt/fr/de/it) and a frosted, translucent panel.
+
+### 1.0.0
+
+- Initial release: one-click article detection, in-page TL;DR + Key points
+  summary via MiniMax, Copy, and settings.
+
+---
+
 ## Credits & license
 
 - Article extraction by Mozilla [Readability](https://github.com/mozilla/readability)

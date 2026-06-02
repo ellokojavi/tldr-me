@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TL;DR me: Article Summarizer",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Detects an article on the current page, extracts it, and shows a TL;DR summary powered by MiniMax or Gemini.",
 
   "browser_specific_settings": {
