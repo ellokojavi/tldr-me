@@ -15,7 +15,9 @@
   const TAB_ID = "article-summarizer-tab";
   const WHATSAPP_ICON =
     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413z"/></svg>';
-  let lastSummary = ""; // raw summary text, used by Copy / WhatsApp share
+  let lastSummary = ""; // full copy text (summary + source line)
+  let lastSummaryRaw = ""; // just the model's summary markdown
+  let lastSourceLine = ""; // "\n\n<label>: <url>" or ""
 
   // Provider metadata for the settings UI (kept in sync with background.js).
   const PROVIDERS = {
@@ -226,6 +228,19 @@
       #${PANEL_ID} button.asz-share-btn.asz-wa { background: #25d366; color: #0b3d1f; }
       #${PANEL_ID} button.asz-share-btn.asz-wa:hover { background: #1fb457; }
       #${PANEL_ID} button.asz-share-btn svg { width: 15px; height: 15px; display: block; }
+      #${PANEL_ID} .asz-wa-wrap { position: relative; display: inline-flex; }
+      #${PANEL_ID} .asz-wa-menu {
+        display: none; position: absolute; top: calc(100% + 4px); right: 0;
+        z-index: 5; min-width: 190px; padding: 4px; background: #ffffff;
+        border: 1px solid #e2e8f0; border-radius: 8px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+      }
+      #${PANEL_ID} .asz-wa-menu.asz-open { display: flex; flex-direction: column; }
+      #${PANEL_ID} .asz-wa-menu button {
+        background: transparent; color: #1a202c; border: none; text-align: left;
+        padding: 8px 10px; border-radius: 6px; font-size: 13px; cursor: pointer;
+      }
+      #${PANEL_ID} .asz-wa-menu button:hover { background: #edf2f7; }
       #${PANEL_ID} .asz-body p { margin: 0 0 10px; }
       #${PANEL_ID} .asz-body h3 {
         font-size: 20px; font-weight: 700; margin: 18px 0 8px; color: #2b6cb0;
@@ -603,21 +618,29 @@
 
   function showSummary(title, summary, thinking, truncated, url, langWarning, sourceLabel) {
     const srcLabel = sourceLabel || "Source";
-    // Copy/share text = the summary plus a source line, so the link travels with it.
-    lastSummary = (summary || "") + (url ? `\n\n${srcLabel}: ${url}` : "");
+    lastSummaryRaw = summary || "";
+    lastSourceLine = url ? `\n\n${srcLabel}: ${url}` : "";
+    // Copy text = the full summary plus the source line.
+    lastSummary = lastSummaryRaw + lastSourceLine;
     let html = title ? `<p class="asz-title">${escapeHtml(title)}</p>` : "";
     if (langWarning) {
       html +=
         `<div class="asz-warn">⚠ This summary may not be in the article's language. ` +
         `Use ↻ to try again.</div>`;
     }
-    // Share subsection: Copy + share via WhatsApp.
+    // Share subsection: Copy + a WhatsApp button with a "what to share" menu.
     html +=
       `<div class="asz-share">` +
       `<button class="asz-share-btn" data-asz="copy" title="Copy summary to clipboard">Copy</button>` +
-      `<button class="asz-share-btn asz-wa" data-asz="whatsapp" title="Share via WhatsApp">` +
+      `<div class="asz-wa-wrap">` +
+      `<button class="asz-share-btn asz-wa" data-asz="whatsapp" title="Share via WhatsApp" aria-haspopup="true">` +
       WHATSAPP_ICON +
-      `WhatsApp</button>` +
+      `WhatsApp ▾</button>` +
+      `<div class="asz-wa-menu" data-asz="wa-menu">` +
+      `<button data-asz="wa-tldr">TL;DR only</button>` +
+      `<button data-asz="wa-full">TL;DR + Key points</button>` +
+      `</div>` +
+      `</div>` +
       `</div>`;
     html += summary
       ? renderSummary(summary)
@@ -643,19 +666,79 @@
     panel.querySelector('[data-asz="copy"]').addEventListener("click", (e) => {
       copySummary(e.currentTarget);
     });
-    panel.querySelector('[data-asz="whatsapp"]').addEventListener("click", () => {
-      shareWhatsApp();
+
+    // WhatsApp button opens a small menu to pick what to share.
+    const waBtn = panel.querySelector('[data-asz="whatsapp"]');
+    const waMenu = panel.querySelector('[data-asz="wa-menu"]');
+    const closeMenu = () => {
+      waMenu.classList.remove("asz-open");
+      document.removeEventListener("click", onDocClick, true);
+    };
+    function onDocClick(e) {
+      if (!waMenu.isConnected) {
+        document.removeEventListener("click", onDocClick, true);
+        return;
+      }
+      if (!waMenu.parentElement.contains(e.target)) closeMenu();
+    }
+    waBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (waMenu.classList.contains("asz-open")) {
+        closeMenu();
+      } else {
+        waMenu.classList.add("asz-open");
+        document.addEventListener("click", onDocClick, true);
+      }
+    });
+    panel.querySelector('[data-asz="wa-tldr"]').addEventListener("click", () => {
+      shareWhatsApp("tldr");
+      closeMenu();
+    });
+    panel.querySelector('[data-asz="wa-full"]').addEventListener("click", () => {
+      shareWhatsApp("full");
+      closeMenu();
     });
   }
 
-  // Open the installed WhatsApp app via its URL scheme with the summary
-  // prefilled; the user picks the recipient inside WhatsApp. Triggered with a
-  // transient anchor click so the OS protocol handler fires without navigating
-  // the article page away.
-  function shareWhatsApp() {
-    if (!lastSummary) return;
+  // Pull just the "## TL;DR" section (heading + its text, up to the next
+  // heading) out of the summary markdown. Falls back to the whole thing.
+  function extractTldrSection(md) {
+    const lines = (md || "").split(/\r?\n/);
+    let start = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (/^#{1,6}\s+.*tl\s*;?\s*dr/i.test(lines[i].trim())) {
+        start = i;
+        break;
+      }
+    }
+    if (start === -1) return (md || "").trim();
+    const out = [lines[start]];
+    for (let i = start + 1; i < lines.length; i++) {
+      if (/^#{1,6}\s+/.test(lines[i].trim())) break; // next heading ends section
+      out.push(lines[i]);
+    }
+    return out.join("\n").trim();
+  }
+
+  // Convert summary Markdown to WhatsApp-friendly plain text: drop heading
+  // markers (keep the heading text) and turn **bold** into WhatsApp *bold*.
+  function toWhatsAppText(md) {
+    return (md || "")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/\*\*(.+?)\*\*/g, "*$1*")
+      .replace(/__(.+?)__/g, "*$1*")
+      .trim();
+  }
+
+  // Open the installed WhatsApp app via its URL scheme with the chosen text
+  // prefilled; the user picks the recipient inside WhatsApp. `variant` is
+  // "tldr" (TL;DR only) or "full" (TL;DR + key points). Both include the URL.
+  function shareWhatsApp(variant) {
+    if (!lastSummaryRaw) return;
+    const body = variant === "tldr" ? extractTldrSection(lastSummaryRaw) : lastSummaryRaw;
+    const text = toWhatsAppText(body) + lastSourceLine;
     const a = document.createElement("a");
-    a.href = "whatsapp://send?text=" + encodeURIComponent(lastSummary);
+    a.href = "whatsapp://send?text=" + encodeURIComponent(text);
     a.style.display = "none";
     document.body.appendChild(a);
     a.click();

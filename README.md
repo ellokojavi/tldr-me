@@ -24,10 +24,6 @@ You don't need to be a developer to try this. Here's the whole thing:
   **double-click it to unzip**. You'll get a folder named something like
   `tldr-me-main`.
 
-> The project is currently private, so you'll need to be signed in to a GitHub
-> account that has access. If you can't see it, ask the owner to share it or to
-> make the repository public.
-
 ### 2. Get a free AI key (pick one)
 
 The add-on needs a key from an AI service to write the summaries. Either works:
@@ -90,7 +86,8 @@ details.
 - **Clean source link.** The article URL is appended (canonical link preferred,
   tracking params stripped) and travels with the copied/shared text.
 - **Share.** Copy to clipboard, or open the installed **WhatsApp** app with the
-  summary prefilled to send to any contact.
+  summary prefilled — choose to send just the **TL;DR** or the **TL;DR + key
+  points**; either way the article link is included.
 - **Collapsible reasoning.** If the model emits chain-of-thought, it's shown in
   a collapsed "Show model reasoning" section so the summary stays front and
   center.
@@ -188,7 +185,7 @@ Packaging and signing the extension removes this caveat entirely.
 |--------|-----|
 | Summarize | Click the on-page **TL;DR** tab or the toolbar icon |
 | Copy | **Copy** button in the Share row (turns into "Copied" for 5s) |
-| Share to WhatsApp | **WhatsApp** button → opens the app with text prefilled |
+| Share to WhatsApp | **WhatsApp** button → choose "TL;DR only" or "TL;DR + Key points" (link always included) |
 | Re-summarize | **↻** in the panel header |
 | Collapse | **→** in the header → panel slides away, tab returns |
 | Settings | **⚙** in the header |
