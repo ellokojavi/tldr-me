@@ -384,7 +384,7 @@
         <h2>TL;DR Me</h2>
         <div class="asz-actions">
           <button class="asz-btn asz-btn-icon" data-asz="settings" title="Settings (API key &amp; model)">⚙</button>
-          <button class="asz-btn asz-btn-icon" data-asz="refresh" title="Summarize again">↻</button>
+          <button class="asz-btn asz-btn-icon" data-asz="refresh" title="Regenerate (ignore the saved summary)">↻</button>
           <button class="asz-btn asz-btn-icon" data-asz="close" title="Collapse panel">→</button>
         </div>
       </div>
@@ -396,7 +396,7 @@
       window.__articleSummarizer.close();
     });
     panel.querySelector('[data-asz="refresh"]').addEventListener("click", () => {
-      run();
+      run(true); // ↻ forces a fresh summary, bypassing the cache
     });
     panel.querySelector('[data-asz="settings"]').addEventListener("click", () => {
       showSettings();
@@ -778,10 +778,64 @@
     }
   }
 
-  async function run() {
-    window.__articleSummarizer.open();
-    showLoading();
+  // ---- Summary cache (keyed by clean URL, persisted in storage.local) ----
+  const CACHE_STORE_KEY = "summaryCache";
+  const CACHE_MAX = 50;
 
+  async function getCached(url) {
+    try {
+      const data = await browser.storage.local.get(CACHE_STORE_KEY);
+      const map = data[CACHE_STORE_KEY] || {};
+      return map[url] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function setCached(url, entry) {
+    try {
+      const data = await browser.storage.local.get(CACHE_STORE_KEY);
+      const map = data[CACHE_STORE_KEY] || {};
+      map[url] = entry;
+      // Keep only the most recent CACHE_MAX entries.
+      const keys = Object.keys(map);
+      if (keys.length > CACHE_MAX) {
+        keys.sort((a, b) => (map[a].ts || 0) - (map[b].ts || 0));
+        for (const k of keys.slice(0, keys.length - CACHE_MAX)) delete map[k];
+      }
+      await browser.storage.local.set({ [CACHE_STORE_KEY]: map });
+    } catch (_) {
+      /* storage full or unavailable — caching is best-effort */
+    }
+  }
+
+  function renderEntry(e) {
+    showSummary(
+      e.title,
+      e.summary,
+      e.thinking,
+      e.truncated,
+      e.url,
+      e.langWarning,
+      e.sourceLabel,
+      e.outputTruncated
+    );
+  }
+
+  // `force` (from the ↻ button) bypasses the cache and regenerates.
+  async function run(force) {
+    window.__articleSummarizer.open();
+    const url = cleanUrl();
+
+    if (!force) {
+      const cached = await getCached(url);
+      if (cached && cached.summary) {
+        renderEntry(cached);
+        return;
+      }
+    }
+
+    showLoading();
     const article = extractArticle();
     if (!article) {
       showError(
@@ -802,16 +856,19 @@
         return;
       }
       if (resp.ok) {
-        showSummary(
-          article.title,
-          resp.summary,
-          resp.thinking,
-          resp.truncated,
-          cleanUrl(),
-          resp.langWarning,
-          resp.sourceLabel,
-          resp.outputTruncated
-        );
+        const entry = {
+          title: article.title,
+          summary: resp.summary,
+          thinking: resp.thinking,
+          truncated: resp.truncated,
+          url,
+          langWarning: resp.langWarning,
+          sourceLabel: resp.sourceLabel,
+          outputTruncated: resp.outputTruncated,
+          ts: Date.now(),
+        };
+        renderEntry(entry);
+        if (entry.summary) setCached(url, entry); // persist for next visit
       } else if (resp.error === "NO_API_KEY") {
         showApiKeyForm(resp.message);
       } else {

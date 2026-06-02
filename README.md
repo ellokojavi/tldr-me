@@ -88,6 +88,9 @@ details.
 - **Share.** Copy to clipboard, or open the installed **WhatsApp** app with the
   summary prefilled — choose to send just the **TL;DR** or the **TL;DR + key
   points**; either way the article link is included.
+- **Summaries are remembered.** Once an article is summarized, the result is
+  saved per URL — revisit or reload the page and the summary appears instantly
+  with no new API call. Press **↻** to force a fresh one.
 - **Collapsible reasoning.** If the model emits chain-of-thought, it's shown in
   a collapsed "Show model reasoning" section so the summary stays front and
   center.
@@ -186,7 +189,7 @@ Packaging and signing the extension removes this caveat entirely.
 | Summarize | Click the on-page **TL;DR** tab or the toolbar icon |
 | Copy | **Copy** button in the Share row (turns into "Copied" for 5s) |
 | Share to WhatsApp | **WhatsApp** button → choose "TL;DR only" or "TL;DR + Key points" (link always included) |
-| Re-summarize | **↻** in the panel header |
+| Re-summarize (fresh) | **↻** in the panel header — ignores the saved copy |
 | Collapse | **→** in the header → panel slides away, tab returns |
 | Settings | **⚙** in the header |
 
