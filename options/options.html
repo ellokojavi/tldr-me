@@ -26,22 +26,22 @@
     </style>
   </head>
   <body>
-    <h1>Article TL;DR Summarizer</h1>
-    <p>Enter your MiniMax API key. It is stored only in this browser's local extension storage.</p>
+    <h1>TL;DR Me — Settings</h1>
+    <p>
+      Add an API key for MiniMax and/or Gemini. The first key you add becomes the
+      active provider; switch anytime with the Provider selector. Keys are stored
+      only in this browser's local extension storage.
+    </p>
 
-    <label for="apiKey">MiniMax API key</label>
+    <label for="provider">Provider</label>
+    <select id="provider"></select>
+
+    <label for="apiKey">API key</label>
     <input id="apiKey" type="password" placeholder="Paste your API key" autocomplete="off" />
-    <div class="hint">Get a key from your MiniMax platform dashboard (platform.minimax.io).</div>
+    <div class="hint" id="hint"></div>
 
     <label for="model">Model</label>
-    <select id="model">
-      <option value="MiniMax-M2.7">MiniMax-M2.7</option>
-      <option value="MiniMax-M2.5">MiniMax-M2.5</option>
-      <option value="MiniMax-M2.1">MiniMax-M2.1</option>
-      <option value="MiniMax-M2">MiniMax-M2</option>
-      <option value="MiniMax-M3">MiniMax-M3</option>
-    </select>
-    <div class="hint">Defaults to MiniMax-M2.7.</div>
+    <select id="model"></select>
 
     <div>
       <button id="save">Save</button>

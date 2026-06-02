@@ -2,7 +2,8 @@
 
 A Firefox extension that detects the article on the current page, extracts its
 main text, and shows a clean **TL;DR summary** in an in-page sidebar — powered
-by the [MiniMax](https://platform.minimax.io) API (OpenAI-compatible).
+by your choice of [MiniMax](https://platform.minimax.io) or
+[Gemini](https://ai.google.dev) (both via their OpenAI-compatible APIs).
 
 It's built for fast, low-friction reading: a small **TL;DR** tab appears on
 article pages, one click gives you a structured summary with key points, and you
@@ -15,6 +16,9 @@ can copy it or share it straight to WhatsApp.
 
 ## Features
 
+- **Choose your provider.** Add a **MiniMax** and/or **Gemini** API key; the
+  first key you add becomes the active provider, and you can switch anytime from
+  the ⚙ Settings panel. Both use OpenAI-compatible endpoints.
 - **Automatic article detection.** A lightweight check (Mozilla's
   [Readability](https://github.com/mozilla/readability) `isProbablyReaderable`)
   runs on the active tab and shows a green badge on the toolbar icon.
@@ -55,7 +59,8 @@ can copy it or share it straight to WhatsApp.
                  └───────────────────────────┬────────────────────────────────────────┘
                                               │ summarize { title, text, lang }
                                               ▼
-                         background.js  ──▶  MiniMax /v1/chat/completions
+                         background.js  ──▶  MiniMax or Gemini (chat/completions)
+                              • provider selection
                               • language guard + retry
                               • <think> reasoning split out
                               • localized "Source" label
@@ -97,10 +102,16 @@ Firefox re-prompts on every page.
 
 ## Configuration
 
-- **API key & model.** Open any article, click the **TL;DR** tab, and paste your
-  MiniMax API key when prompted — or use the **⚙ Settings** button in the panel
-  header at any time to change the key or model (default: `MiniMax-M2.7`).
-- The key is stored in `browser.storage.local`.
+- **Provider, API key & model.** Open any article, click the **TL;DR** tab, and
+  choose a provider + paste its API key when prompted — or use the **⚙ Settings**
+  button in the panel header at any time. Each provider keeps its own key and
+  model; the first key you add becomes the default.
+  - **MiniMax** — get a key at [platform.minimax.io](https://platform.minimax.io)
+    (default model `MiniMax-M2.7`).
+  - **Gemini** — get a key at
+    [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+    (default model `gemini-2.5-flash`).
+- Keys are stored in `browser.storage.local`.
 
 ### Make the key (and permission) persist across restarts
 
@@ -133,8 +144,8 @@ Packaging and signing the extension removes this caveat entirely.
 
 ```
 manifest.json              Extension manifest (MV3, Firefox 140+)
-background/background.js    Toolbar/tab handlers, badge, MiniMax call,
-                           language guard + retry, <think> splitting
+background/background.js    Toolbar/tab handlers, badge, provider selection +
+                           API call, language guard + retry, <think> splitting
 content/detect.js          Lightweight detector + on-load "TL;DR" tab
 content/content.js         Article extraction, sidebar UI, Markdown renderer,
                            Copy/WhatsApp, settings, clean-URL
@@ -167,13 +178,13 @@ HTML-escaped or static templates).
 
 ## Privacy & permissions
 
-- **Article text is sent to MiniMax** (`api.minimax.io`) to generate the
-  summary — declared via the manifest's `data_collection_permissions`
-  (`websiteContent`).
+- **Article text is sent to your chosen provider** (`api.minimax.io` or
+  `generativelanguage.googleapis.com`) to generate the summary — declared via
+  the manifest's `data_collection_permissions` (`websiteContent`).
 - **Passive detection** reads only a yes/no "is this an article?" signal from
   the active tab; it does not transmit page content. Full extraction and the
   network call happen only when you click.
-- Outbound network access is limited to `api.minimax.io`.
+- Outbound network access is limited to the two provider hosts.
 - Your API key lives only in this browser's local extension storage. Do not
   distribute a build with a key embedded.
 
@@ -194,7 +205,8 @@ HTML-escaped or static templates).
 
 - Article extraction by Mozilla [Readability](https://github.com/mozilla/readability)
   (Apache License 2.0), vendored in `lib/`.
-- Summaries by the [MiniMax](https://platform.minimax.io) API.
+- Summaries by the [MiniMax](https://platform.minimax.io) and
+  [Gemini](https://ai.google.dev) APIs.
 
 This project's own code is provided as-is for personal use. Add a license of
 your choice before distributing.

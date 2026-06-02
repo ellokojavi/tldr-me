@@ -1,18 +1,60 @@
 /*
  * Background event page.
  * - On toolbar click: injects the Readability libs + content script into the active tab.
- * - Handles "summarize" messages by calling the MiniMax chat-completions API.
+ * - Handles "summarize" messages by calling the configured provider's
+ *   chat-completions API (MiniMax or Gemini, both OpenAI-compatible).
  *
  * The fetch lives here (not in the content script) so it runs with the
  * extension's host_permissions and isn't blocked by the page's CSP / CORS.
  */
 
-const MINIMAX_ENDPOINT = "https://api.minimax.io/v1/chat/completions";
-const DEFAULT_MODEL = "MiniMax-M2.7";
+// Supported providers. Both expose an OpenAI-compatible chat-completions
+// endpoint, so the same request code works for either.
+const PROVIDERS = {
+  minimax: {
+    label: "MiniMax",
+    endpoint: "https://api.minimax.io/v1/chat/completions",
+    defaultModel: "MiniMax-M2.7",
+    models: ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2", "MiniMax-M3"],
+  },
+  gemini: {
+    label: "Gemini",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    defaultModel: "gemini-2.5-flash",
+    models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3-flash-preview"],
+  },
+};
+// Preference order when picking a default provider (first one with a key wins).
+const PROVIDER_ORDER = ["minimax", "gemini"];
 
 // Keep prompts well within the model's context window. ~4 chars/token is a rough
 // rule of thumb, so 48k chars is comfortably inside a large-context model.
 const MAX_INPUT_CHARS = 48000;
+
+// Resolve which provider + key + model to use. The active provider is whatever
+// the user selected; if none is set (or its key was cleared), fall back to the
+// first provider that has a key — so "the first key added" becomes the default.
+async function getActiveConfig() {
+  const s = await browser.storage.local.get([
+    "minimaxApiKey", "geminiApiKey", "minimaxModel", "geminiModel", "activeProvider",
+  ]);
+  const keys = {
+    minimax: (s.minimaxApiKey || "").trim(),
+    gemini: (s.geminiApiKey || "").trim(),
+  };
+  let active = s.activeProvider;
+  if (!active || !PROVIDERS[active] || !keys[active]) {
+    active = PROVIDER_ORDER.find((p) => keys[p]) || null;
+  }
+  if (!active) return null;
+  const cfg = PROVIDERS[active];
+  return {
+    provider: active,
+    endpoint: cfg.endpoint,
+    apiKey: keys[active],
+    model: s[`${active}Model`] || cfg.defaultModel,
+  };
+}
 
 // Separate the model's chain-of-thought from the actual answer.
 // Handles <think>...</think> blocks inside the content (and an unclosed
@@ -231,9 +273,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
     return handleSummarize(message);
   }
   if (message && message.type === "saveApiKey") {
-    return browser.storage.local
-      .set({ minimaxApiKey: (message.key || "").trim() })
-      .then(() => ({ ok: true }));
+    return handleSaveApiKey(message);
   }
   if (message && message.type === "openOptions") {
     browser.runtime.openOptionsPage();
@@ -242,18 +282,32 @@ browser.runtime.onMessage.addListener((message, sender) => {
   return false;
 });
 
-async function handleSummarize({ title, text, lang }) {
-  const { minimaxApiKey, model } = await browser.storage.local.get([
-    "minimaxApiKey",
-    "model",
-  ]);
+// Save a provider's key (and optional model). The first key ever added — or an
+// explicit setActive — becomes the active provider used for summaries.
+async function handleSaveApiKey(message) {
+  const provider = PROVIDERS[message.provider] ? message.provider : "minimax";
+  const current = await browser.storage.local.get(["activeProvider"]);
+  const trimmedKey = (message.key || "").trim();
+  const patch = {};
+  patch[`${provider}ApiKey`] = trimmedKey;
+  if (message.model) patch[`${provider}Model`] = message.model;
+  // Only make this provider active if it actually has a key — so clearing a key
+  // never selects a keyless provider, and the first real key becomes the default.
+  if (trimmedKey && (message.setActive || !current.activeProvider)) {
+    patch.activeProvider = provider;
+  }
+  await browser.storage.local.set(patch);
+  return { ok: true };
+}
 
-  if (!minimaxApiKey) {
+async function handleSummarize({ title, text, lang }) {
+  const config = await getActiveConfig();
+
+  if (!config) {
     return {
       ok: false,
       error: "NO_API_KEY",
-      message:
-        "No MiniMax API key set. Open the extension options to add your key.",
+      message: "No API key set. Open settings to add a MiniMax or Gemini key.",
     };
   }
 
@@ -291,7 +345,6 @@ async function handleSummarize({ title, text, lang }) {
     (truncated ? "(Note: the article was truncated for length.)\n" : "") +
     `\nArticle text:\n${article}`;
 
-  const activeModel = model || DEFAULT_MODEL;
   const articleScript = dominantScript(article);
   const langLabel = languageName(lang); // e.g. "English", or "" if unknown
 
@@ -314,8 +367,9 @@ async function handleSummarize({ title, text, lang }) {
   let langWarning = false;
   for (let i = 0; i < escalations.length; i++) {
     res = await requestModel({
-      apiKey: minimaxApiKey,
-      model: activeModel,
+      endpoint: config.endpoint,
+      apiKey: config.apiKey,
+      model: config.model,
       messages: [
         { role: "system", content: systemPrompt + escalations[i] },
         { role: "user", content: userPrompt },
@@ -345,11 +399,11 @@ async function handleSummarize({ title, text, lang }) {
   };
 }
 
-// Single call to the MiniMax chat-completions API. Returns
-// { ok, summary, thinking } or { ok:false, error, message }.
-async function requestModel({ apiKey, model, messages }) {
+// Single call to an OpenAI-compatible chat-completions API (MiniMax or Gemini).
+// Returns { ok, summary, thinking } or { ok:false, error, message }.
+async function requestModel({ endpoint, apiKey, model, messages }) {
   try {
-    const resp = await fetch(MINIMAX_ENDPOINT, {
+    const resp = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

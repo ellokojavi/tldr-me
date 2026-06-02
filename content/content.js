@@ -17,6 +17,23 @@
     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413z"/></svg>';
   let lastSummary = ""; // raw summary text, used by Copy / WhatsApp share
 
+  // Provider metadata for the settings UI (kept in sync with background.js).
+  const PROVIDERS = {
+    minimax: {
+      label: "MiniMax",
+      models: ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2", "MiniMax-M3"],
+      defaultModel: "MiniMax-M2.7",
+      hint: "Get a key at platform.minimax.io.",
+    },
+    gemini: {
+      label: "Gemini",
+      models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3-flash-preview"],
+      defaultModel: "gemini-2.5-flash",
+      hint: "Get a key at aistudio.google.com/apikey.",
+    },
+  };
+  const PROVIDER_ORDER = ["minimax", "gemini"];
+
   // Second+ injection: toggle the existing instance and bail.
   if (window.__articleSummarizer && window.__articleSummarizer.toggle) {
     window.__articleSummarizer.toggle();
@@ -394,88 +411,136 @@
     setBody(`<div class="asz-error">${escapeHtml(message)}</div>`);
   }
 
-  // Shown when no API key is stored — lets the user paste it right here.
+  function providerOptionsHtml(selected) {
+    return PROVIDER_ORDER.map(
+      (p) =>
+        `<option value="${p}"${p === selected ? " selected" : ""}>${escapeHtml(PROVIDERS[p].label)}</option>`
+    ).join("");
+  }
+  function modelOptionsHtml(provider, selectedModel) {
+    const info = PROVIDERS[provider];
+    const sel = selectedModel || info.defaultModel;
+    return info.models
+      .map(
+        (m) =>
+          `<option value="${escapeAttr(m)}"${m === sel ? " selected" : ""}>${escapeHtml(m)}</option>`
+      )
+      .join("");
+  }
+
+  // Shown when no provider key is stored yet — pick a provider and paste a key.
   function showApiKeyForm(message) {
+    let provider = "minimax";
     const panel = setBody(
       `<div class="asz-keyform">` +
-        `<p>${escapeHtml(message || "Enter your MiniMax API key to get started.")}</p>` +
-        `<input type="password" data-asz="key" placeholder="Paste MiniMax API key" autocomplete="off" />` +
+        `<p>${escapeHtml(message || "Add an API key to get started.")}</p>` +
+        `<label class="asz-label">Provider</label>` +
+        `<select data-asz="provider">${providerOptionsHtml(provider)}</select>` +
+        `<label class="asz-label">API key</label>` +
+        `<input type="password" data-asz="key" placeholder="Paste API key" autocomplete="off" />` +
         `<button data-asz="save-key">Save &amp; summarize</button>` +
-        `<p class="asz-note">Stored locally in this browser. Get a key at platform.minimax.io.</p>` +
+        `<p class="asz-note" data-asz="hint">${escapeHtml(PROVIDERS[provider].hint)}</p>` +
         `</div>`
     );
+    const providerSel = panel.querySelector('[data-asz="provider"]');
     const input = panel.querySelector('[data-asz="key"]');
-    const saveBtn = panel.querySelector('[data-asz="save-key"]');
+    const hint = panel.querySelector('[data-asz="hint"]');
+    providerSel.addEventListener("change", () => {
+      provider = providerSel.value;
+      hint.textContent = PROVIDERS[provider].hint;
+    });
     const submit = async () => {
       const key = input.value.trim();
       if (!key) {
         input.focus();
         return;
       }
-      await browser.runtime.sendMessage({ type: "saveApiKey", key });
+      await browser.runtime.sendMessage({
+        type: "saveApiKey",
+        provider: providerSel.value,
+        key,
+        setActive: true,
+      });
       run();
     };
-    saveBtn.addEventListener("click", submit);
+    panel.querySelector('[data-asz="save-key"]').addEventListener("click", submit);
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") submit();
     });
     input.focus();
   }
 
-  // In-app settings: replace the stored API key (and choose the model) at any
-  // time, even when a key is already set. Saved to browser.storage.local.
+  // In-app settings: choose the active provider and set/replace its key + model.
   async function showSettings() {
     window.__articleSummarizer.open();
-    const stored = await browser.storage.local.get(["minimaxApiKey", "model"]);
-    const current = stored.model || "MiniMax-M2.7";
-    const models = [
-      "MiniMax-M2.7",
-      "MiniMax-M2.5",
-      "MiniMax-M2.1",
-      "MiniMax-M2",
-      "MiniMax-M3",
-    ];
-    const optionsHtml = models
-      .map(
-        (m) =>
-          `<option value="${escapeAttr(m)}"${m === current ? " selected" : ""}>${escapeHtml(m)}</option>`
-      )
-      .join("");
+    const stored = await browser.storage.local.get([
+      "minimaxApiKey", "geminiApiKey", "minimaxModel", "geminiModel", "activeProvider",
+    ]);
+    const keyOf = (p) => stored[`${p}ApiKey`] || "";
+    let selected = stored.activeProvider;
+    if (!selected || !PROVIDERS[selected]) {
+      selected = PROVIDER_ORDER.find((p) => keyOf(p)) || "minimax";
+    }
 
     const panel = setBody(
       `<div class="asz-keyform">` +
         `<h3 class="asz-settings-title">Settings</h3>` +
-        `<label class="asz-label">MiniMax API key</label>` +
-        `<input type="password" data-asz="key" value="${escapeAttr(stored.minimaxApiKey || "")}" placeholder="Paste MiniMax API key" autocomplete="off" />` +
-        `<label class="asz-label">Model</label>` +
-        `<select data-asz="model">${optionsHtml}</select>` +
+        `<label class="asz-label">Provider</label>` +
+        `<select data-asz="provider">${providerOptionsHtml(selected)}</select>` +
+        `<div data-asz="provider-fields"></div>` +
         `<div class="asz-settings-actions">` +
         `<button data-asz="save-settings">Save</button>` +
         (lastSummary
           ? `<button class="asz-secondary" data-asz="cancel-settings">Back to summary</button>`
           : "") +
         `</div>` +
-        `<p class="asz-note" data-asz="settings-status">Stored in this browser and reused automatically. Get a key at platform.minimax.io.</p>` +
+        `<p class="asz-note" data-asz="settings-status"></p>` +
         `</div>`
     );
 
-    const input = panel.querySelector('[data-asz="key"]');
-    const modelSel = panel.querySelector('[data-asz="model"]');
+    const providerSel = panel.querySelector('[data-asz="provider"]');
+    const fields = panel.querySelector('[data-asz="provider-fields"]');
     const status = panel.querySelector('[data-asz="settings-status"]');
 
+    function renderFields(p) {
+      fields.innerHTML =
+        `<label class="asz-label">${escapeHtml(PROVIDERS[p].label)} API key</label>` +
+        `<input type="password" data-asz="key" value="${escapeAttr(keyOf(p))}" placeholder="Paste API key" autocomplete="off" />` +
+        `<label class="asz-label">Model</label>` +
+        `<select data-asz="model">${modelOptionsHtml(p, stored[`${p}Model`])}</select>` +
+        `<p class="asz-note">${escapeHtml(PROVIDERS[p].hint)} The first key you add becomes the default provider.</p>`;
+    }
+    renderFields(selected);
+
+    providerSel.addEventListener("change", () => {
+      renderFields(providerSel.value);
+      status.textContent = "";
+    });
+
     panel.querySelector('[data-asz="save-settings"]').addEventListener("click", async () => {
-      await browser.storage.local.set({
-        minimaxApiKey: input.value.trim(),
-        model: modelSel.value,
+      const p = providerSel.value;
+      const key = fields.querySelector('[data-asz="key"]').value.trim();
+      const model = fields.querySelector('[data-asz="model"]').value;
+      await browser.runtime.sendMessage({
+        type: "saveApiKey",
+        provider: p,
+        key,
+        model,
+        setActive: true,
       });
-      status.textContent = "Saved ✓ — settings stored.";
+      // Keep the local copy in sync so switching providers shows saved values.
+      stored[`${p}ApiKey`] = key;
+      stored[`${p}Model`] = model;
+      status.textContent = key
+        ? `Saved ✓ — ${PROVIDERS[p].label} is now active.`
+        : `Saved ✓ — ${PROVIDERS[p].label} key cleared.`;
     });
 
     const cancelBtn = panel.querySelector('[data-asz="cancel-settings"]');
-    if (cancelBtn) {
-      cancelBtn.addEventListener("click", () => run());
-    }
-    input.focus();
+    if (cancelBtn) cancelBtn.addEventListener("click", () => run());
+
+    const firstInput = fields.querySelector('[data-asz="key"]');
+    if (firstInput) firstInput.focus();
   }
 
   function showSummary(title, summary, thinking, truncated, url, langWarning, sourceLabel) {
