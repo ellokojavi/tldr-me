@@ -282,9 +282,12 @@ HTML-escaped or static templates).
 ### Unreleased
 
 - **Print / save as PDF** — a Print button that lays out the summary, the
-  Go-deeper questions, and the full article on one printable page.
-- Modernized panel header (blue gradient + brand mark) and a translucent
-  frosted pane.
+  Go-deeper questions, and the full article (document structure preserved) on
+  one printable page.
+- **WhatsApp attribution footer** — shared messages end with a "summarized with
+  TL;DR Me" link, placed last so the link preview stays the article.
+- **Modernized panel header** — blue gradient + brand mark and glassy buttons;
+  tuned the panel's translucency for better text contrast.
 
 ### 1.2.0
 
