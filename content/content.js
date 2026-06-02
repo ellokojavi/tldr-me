@@ -751,16 +751,19 @@
   // picks the recipient inside WhatsApp. `variant` is "tldr" (TL;DR only) or
   // "full" (TL;DR + key points). Both include the article URL.
   //
-  // Uses the official https://wa.me/?text= link, which reliably carries the
-  // whole multi-line message (the whatsapp:// scheme dropped everything but the
-  // URL on desktop). On mobile this opens the app; on desktop it opens WhatsApp
-  // (app or web) with the message ready to send.
+  // Uses the whatsapp:// scheme via a transient anchor click. This passes the
+  // text VERBATIM to the installed app — the https://wa.me/ handoff on desktop
+  // was stripping everything except the URL, so we deliberately avoid it.
   function shareWhatsApp(variant) {
     if (!lastSummaryRaw) return;
     const body = variant === "tldr" ? extractTldrSection(lastSummaryRaw) : lastSummaryRaw;
     const text = toWhatsAppText(body) + lastSourceLine;
-    const url = "https://wa.me/?text=" + encodeURIComponent(text);
-    window.open(url, "_blank", "noopener,noreferrer");
+    const a = document.createElement("a");
+    a.href = "whatsapp://send?text=" + encodeURIComponent(text);
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   // Extract the article. Returns { title, text, lang } or null.
