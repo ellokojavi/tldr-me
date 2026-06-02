@@ -1,16 +1,71 @@
 # TL;DR Me — Article Summarizer for Firefox
 
-A Firefox extension that detects the article on the current page, extracts its
-main text, and shows a clean **TL;DR summary** in an in-page sidebar — powered
-by your choice of [MiniMax](https://platform.minimax.io) or
-[Gemini](https://ai.google.dev) (both via their OpenAI-compatible APIs).
+**Reading a long article? TL;DR Me gives you the short version.**
 
-It's built for fast, low-friction reading: a small **TL;DR** tab appears on
-article pages, one click gives you a structured summary with key points, and you
-can copy it or share it straight to WhatsApp.
+This is a small add-on for the Firefox web browser. When you're on a news story
+or blog post, a little **TL;DR** tab appears on the right edge of the page. Click
+it and you get a quick summary — a one-line takeaway plus the key points — right
+next to the article. You can copy it or send it to a friend on WhatsApp.
 
-> **Status:** personal-use / developer build. Loads as a temporary add-on (see
-> [Install](#install)); package & sign it for permanent installation.
+It works in the language the article is written in, and you bring your own free
+AI key from either **MiniMax** or **Google Gemini** (more on that below).
+
+---
+
+## Try it on your computer (no coding needed)
+
+You don't need to be a developer to try this. Here's the whole thing:
+
+### 1. Download the code as a ZIP
+
+- Go to the project page: **https://github.com/ellokojavi/tldr-me**
+- Click the green **`< > Code`** button, then **Download ZIP**.
+- Find the downloaded file (usually in your **Downloads** folder) and
+  **double-click it to unzip**. You'll get a folder named something like
+  `tldr-me-main`.
+
+> The project is currently private, so you'll need to be signed in to a GitHub
+> account that has access. If you can't see it, ask the owner to share it or to
+> make the repository public.
+
+### 2. Get a free AI key (pick one)
+
+The add-on needs a key from an AI service to write the summaries. Either works:
+
+- **Google Gemini** — go to
+  [aistudio.google.com/apikey](https://aistudio.google.com/apikey), sign in with
+  a Google account, and click **Create API key**. Copy the key (it starts with
+  `AIza…`).
+- **MiniMax** — create an account at
+  [platform.minimax.io](https://platform.minimax.io) and copy your API key.
+
+Keep the key handy — you'll paste it once in step 4. It stays only on your
+computer.
+
+### 3. Load the add-on into Firefox
+
+1. Open **Firefox** (install it from [firefox.com](https://www.firefox.com) if
+   you don't have it).
+2. In the address bar, type **`about:debugging`** and press Enter.
+3. Click **This Firefox** on the left.
+4. Click **Load Temporary Add-on…**.
+5. Open the folder you unzipped and select the file named **`manifest.json`**.
+
+A new icon appears in your toolbar. (Firefox forgets temporary add-ons when you
+fully quit it — just repeat this step next time, or see
+[permanent install](#install) below.)
+
+### 4. Use it
+
+1. Open any news article or blog post.
+2. Click the blue **TL;DR** tab on the right edge of the page (or the toolbar
+   icon).
+3. The first time, it asks for your AI key — pick your provider, paste the key
+   from step 2, and click **Save & summarize**.
+4. Read your summary! Use **Copy** or **WhatsApp** to share it.
+
+That's it. The rest of this document is for people who want the technical
+details.
 
 ---
 
