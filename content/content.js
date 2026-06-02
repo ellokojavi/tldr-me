@@ -24,15 +24,33 @@
       models: ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2", "MiniMax-M3"],
       defaultModel: "MiniMax-M2.7",
       hint: "Get a key at platform.minimax.io.",
+      keyPattern: /^[A-Za-z0-9._-]{20,}$/,
+      keyError: "That doesn't look like a MiniMax key — expected a long token (20+ chars) with no spaces.",
     },
     gemini: {
       label: "Gemini",
       models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3-flash-preview"],
       defaultModel: "gemini-2.5-flash",
       hint: "Get a key at aistudio.google.com/apikey.",
+      keyPattern: /^AIza[A-Za-z0-9_-]{35}$/,
+      keyError: 'That doesn\'t look like a Gemini key — it should start with "AIza" and be 39 characters.',
     },
   };
   const PROVIDER_ORDER = ["minimax", "gemini"];
+
+  // Validate a key's format. Empty is allowed (means "clear this key").
+  function validateKey(provider, key) {
+    const value = (key || "").trim();
+    if (!value) return { ok: true };
+    if (/\s/.test(value)) {
+      return { ok: false, message: "The key contains spaces or line breaks — paste only the key." };
+    }
+    const info = PROVIDERS[provider];
+    if (info && info.keyPattern && !info.keyPattern.test(value)) {
+      return { ok: false, message: info.keyError };
+    }
+    return { ok: true };
+  }
 
   // Second+ injection: toggle the existing instance and bail.
   if (window.__articleSummarizer && window.__articleSummarizer.toggle) {
@@ -310,6 +328,9 @@
         display: block; font-size: 13px; font-weight: 600; color: #4a5568; margin-top: 4px;
       }
       #${PANEL_ID} .asz-settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      #${PANEL_ID} .asz-field-error {
+        font-size: 12px; color: #c53030; margin: 8px 0 0; font-weight: 600;
+      }
       #${PANEL_ID} button.asz-btn.asz-copied { background: #38a169; }
       @keyframes asz-spin { to { transform: rotate(360deg); } }
 
@@ -439,28 +460,48 @@
         `<label class="asz-label">API key</label>` +
         `<input type="password" data-asz="key" placeholder="Paste API key" autocomplete="off" />` +
         `<button data-asz="save-key">Save &amp; summarize</button>` +
+        `<p class="asz-field-error" data-asz="key-error" hidden></p>` +
         `<p class="asz-note" data-asz="hint">${escapeHtml(PROVIDERS[provider].hint)}</p>` +
         `</div>`
     );
     const providerSel = panel.querySelector('[data-asz="provider"]');
     const input = panel.querySelector('[data-asz="key"]');
     const hint = panel.querySelector('[data-asz="hint"]');
+    const errorEl = panel.querySelector('[data-asz="key-error"]');
+    const clearError = () => {
+      errorEl.hidden = true;
+      errorEl.textContent = "";
+    };
     providerSel.addEventListener("change", () => {
       provider = providerSel.value;
       hint.textContent = PROVIDERS[provider].hint;
+      clearError();
     });
+    input.addEventListener("input", clearError);
     const submit = async () => {
       const key = input.value.trim();
       if (!key) {
         input.focus();
         return;
       }
-      await browser.runtime.sendMessage({
+      const check = validateKey(providerSel.value, key);
+      if (!check.ok) {
+        errorEl.textContent = check.message;
+        errorEl.hidden = false;
+        input.focus();
+        return;
+      }
+      const resp = await browser.runtime.sendMessage({
         type: "saveApiKey",
         provider: providerSel.value,
         key,
         setActive: true,
       });
+      if (resp && resp.ok === false) {
+        errorEl.textContent = resp.message || "Could not save the key.";
+        errorEl.hidden = false;
+        return;
+      }
       run();
     };
     panel.querySelector('[data-asz="save-key"]').addEventListener("click", submit);
@@ -512,28 +553,45 @@
     }
     renderFields(selected);
 
+    const setStatus = (text, isError) => {
+      status.textContent = text;
+      status.classList.toggle("asz-field-error", Boolean(isError));
+    };
+
     providerSel.addEventListener("change", () => {
       renderFields(providerSel.value);
-      status.textContent = "";
+      setStatus("", false);
     });
 
     panel.querySelector('[data-asz="save-settings"]').addEventListener("click", async () => {
       const p = providerSel.value;
       const key = fields.querySelector('[data-asz="key"]').value.trim();
       const model = fields.querySelector('[data-asz="model"]').value;
-      await browser.runtime.sendMessage({
+      const check = validateKey(p, key);
+      if (!check.ok) {
+        setStatus(check.message, true);
+        return;
+      }
+      const resp = await browser.runtime.sendMessage({
         type: "saveApiKey",
         provider: p,
         key,
         model,
         setActive: true,
       });
+      if (resp && resp.ok === false) {
+        setStatus(resp.message || "Could not save the key.", true);
+        return;
+      }
       // Keep the local copy in sync so switching providers shows saved values.
       stored[`${p}ApiKey`] = key;
       stored[`${p}Model`] = model;
-      status.textContent = key
-        ? `Saved ✓ — ${PROVIDERS[p].label} is now active.`
-        : `Saved ✓ — ${PROVIDERS[p].label} key cleared.`;
+      setStatus(
+        key
+          ? `Saved ✓ — ${PROVIDERS[p].label} is now active.`
+          : `Saved ✓ — ${PROVIDERS[p].label} key cleared.`,
+        false
+      );
     });
 
     const cancelBtn = panel.querySelector('[data-asz="cancel-settings"]');

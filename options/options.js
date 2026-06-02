@@ -5,15 +5,33 @@ const PROVIDERS = {
     models: ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2", "MiniMax-M3"],
     defaultModel: "MiniMax-M2.7",
     hint: "Get a key from platform.minimax.io.",
+    keyPattern: /^[A-Za-z0-9._-]{20,}$/,
+    keyError: "That doesn't look like a MiniMax key — expected a long token (20+ chars) with no spaces.",
   },
   gemini: {
     label: "Gemini",
     models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3-flash-preview"],
     defaultModel: "gemini-2.5-flash",
     hint: "Get a key from aistudio.google.com/apikey.",
+    keyPattern: /^AIza[A-Za-z0-9_-]{35}$/,
+    keyError: 'That doesn\'t look like a Gemini key — it should start with "AIza" and be 39 characters.',
   },
 };
 const PROVIDER_ORDER = ["minimax", "gemini"];
+
+// Validate a key's format. Empty is allowed (means "clear this key").
+function validateKey(provider, key) {
+  const value = (key || "").trim();
+  if (!value) return { ok: true };
+  if (/\s/.test(value)) {
+    return { ok: false, message: "The key contains spaces or line breaks — paste only the key." };
+  }
+  const info = PROVIDERS[provider];
+  if (info && info.keyPattern && !info.keyPattern.test(value)) {
+    return { ok: false, message: info.keyError };
+  }
+  return { ok: true };
+}
 
 const providerEl = document.getElementById("provider");
 const apiKeyEl = document.getElementById("apiKey");
@@ -59,23 +77,39 @@ async function load() {
 
 providerEl.addEventListener("change", () => {
   renderProviderFields(providerEl.value);
-  statusEl.textContent = "";
+  setStatus("", false);
 });
+apiKeyEl.addEventListener("input", () => setStatus("", false));
+
+function setStatus(text, isError) {
+  statusEl.textContent = text;
+  statusEl.classList.toggle("error", Boolean(isError));
+}
 
 async function save() {
   const provider = providerEl.value;
-  await browser.runtime.sendMessage({
+  const key = apiKeyEl.value.trim();
+  const check = validateKey(provider, key);
+  if (!check.ok) {
+    setStatus(check.message, true);
+    return;
+  }
+  const resp = await browser.runtime.sendMessage({
     type: "saveApiKey",
     provider,
-    key: apiKeyEl.value.trim(),
+    key,
     model: modelEl.value,
     setActive: true,
   });
+  if (resp && resp.ok === false) {
+    setStatus(resp.message || "Could not save the key.", true);
+    return;
+  }
   // Keep the local copy in sync so switching providers shows saved values.
-  stored[`${provider}ApiKey`] = apiKeyEl.value.trim();
+  stored[`${provider}ApiKey`] = key;
   stored[`${provider}Model`] = modelEl.value;
-  statusEl.textContent = "Saved ✓";
-  setTimeout(() => (statusEl.textContent = ""), 2000);
+  setStatus("Saved ✓", false);
+  setTimeout(() => setStatus("", false), 2000);
 }
 
 document.getElementById("save").addEventListener("click", save);

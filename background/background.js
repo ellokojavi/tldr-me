@@ -16,14 +16,34 @@ const PROVIDERS = {
     endpoint: "https://api.minimax.io/v1/chat/completions",
     defaultModel: "MiniMax-M2.7",
     models: ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2", "MiniMax-M3"],
+    keyPattern: /^[A-Za-z0-9._-]{20,}$/,
+    keyError: "That doesn't look like a MiniMax key — expected a long token (20+ chars) with no spaces.",
   },
   gemini: {
     label: "Gemini",
     endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     defaultModel: "gemini-2.5-flash",
     models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-3-flash-preview"],
+    keyPattern: /^AIza[A-Za-z0-9_-]{35}$/,
+    keyError: 'That doesn\'t look like a Gemini key — it should start with "AIza" and be 39 characters.',
   },
 };
+
+// Validate an API key's format. Empty is allowed (means "clear this key").
+// Returns { ok: true } or { ok: false, message }.
+function validateApiKey(provider, key) {
+  const value = (key || "").trim();
+  if (!value) return { ok: true };
+  const info = PROVIDERS[provider];
+  if (!info) return { ok: false, message: "Unknown provider." };
+  if (/\s/.test(value)) {
+    return { ok: false, message: "The key contains spaces or line breaks — paste only the key." };
+  }
+  if (info.keyPattern && !info.keyPattern.test(value)) {
+    return { ok: false, message: info.keyError };
+  }
+  return { ok: true };
+}
 // Preference order when picking a default provider (first one with a key wins).
 const PROVIDER_ORDER = ["minimax", "gemini"];
 
@@ -286,8 +306,15 @@ browser.runtime.onMessage.addListener((message, sender) => {
 // explicit setActive — becomes the active provider used for summaries.
 async function handleSaveApiKey(message) {
   const provider = PROVIDERS[message.provider] ? message.provider : "minimax";
-  const current = await browser.storage.local.get(["activeProvider"]);
   const trimmedKey = (message.key || "").trim();
+
+  // Safety net: never persist a malformed key (the UI validates too).
+  const check = validateApiKey(provider, trimmedKey);
+  if (!check.ok) {
+    return { ok: false, error: "INVALID_KEY", message: check.message };
+  }
+
+  const current = await browser.storage.local.get(["activeProvider"]);
   const patch = {};
   patch[`${provider}ApiKey`] = trimmedKey;
   if (message.model) patch[`${provider}Model`] = message.model;
