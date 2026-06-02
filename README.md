@@ -101,6 +101,11 @@ details.
 - **Summaries are remembered.** Once an article is summarized, the result is
   saved per URL — revisit or reload the page and the summary appears instantly
   with no new API call. Press **↻** to force a fresh one.
+- **Go deeper (optional).** Below the summary, a one-click **💭 Go deeper**
+  surfaces 3 article-specific questions/tensions to think about — the model's
+  take on each is tucked behind a tap, so it provokes your thinking rather than
+  spoon-feeding conclusions. On-demand (a second call only when you ask) and
+  cached per article.
 - **Collapsible reasoning.** If the model emits chain-of-thought, it's shown in
   a collapsed "Show model reasoning" section so the summary stays front and
   center.
@@ -199,6 +204,7 @@ Packaging and signing the extension removes this caveat entirely.
 | Summarize | Click the on-page **TL;DR** tab or the toolbar icon |
 | Copy | **Copy** button in the Share row (turns into "Copied" for 5s) |
 | Share to WhatsApp | the green WhatsApp **Share** button → choose "TL;DR only" or "TL;DR + Key points" (link always included) |
+| Go deeper | **💭 Go deeper** below the summary → 3 questions to chew on; tap *See a perspective* on any |
 | Re-summarize (fresh) | **↻** in the panel header — ignores the saved copy |
 | Collapse | **→** in the header → panel slides away, tab returns |
 | Settings | **⚙** in the header |

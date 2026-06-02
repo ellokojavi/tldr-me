@@ -292,6 +292,9 @@ browser.runtime.onMessage.addListener((message, sender) => {
     // Returning a promise tells Firefox to keep the channel open for the async reply.
     return handleSummarize(message);
   }
+  if (message && message.type === "discuss") {
+    return handleDiscuss(message);
+  }
   if (message && message.type === "saveApiKey") {
     return handleSaveApiKey(message);
   }
@@ -456,6 +459,61 @@ async function handleSummarize({ title, text, lang }) {
     outputTruncated: res.finishReason === "length",
     sourceLabel: sourceLabel(lang, article),
   };
+}
+
+// "Go deeper": generate 3 reader provocations (sharp, article-specific
+// questions/tensions) each with a brief perspective. Returns raw text the
+// content script parses into Q/A pairs. On-demand only (a second call the user
+// opts into), so it never slows the default summary.
+async function handleDiscuss({ title, text, lang }) {
+  const config = await getActiveConfig();
+  if (!config) {
+    return {
+      ok: false,
+      error: "NO_API_KEY",
+      message: "No API key set. Open settings to add a MiniMax or Gemini key.",
+    };
+  }
+
+  let article = (text || "").trim();
+  if (!article) {
+    return { ok: false, error: "EMPTY", message: "No article text was found on this page." };
+  }
+  if (article.length > MAX_INPUT_CHARS) article = article.slice(0, MAX_INPUT_CHARS);
+
+  const systemPrompt =
+    "You are an incisive thinking partner. The reader has already seen a summary " +
+    "and now wants to think more deeply. Generate EXACTLY 3 provocations: sharp, " +
+    "specific questions or tensions THIS article raises — the kind that make a " +
+    "thoughtful reader pause. Ground each in the article's specifics; avoid generic " +
+    "questions that could apply to any article. For each, also write a brief " +
+    "perspective (2-4 sentences) offering a thoughtful angle to consider — explore " +
+    "the tension, don't deliver a verdict. Write everything in the same language as " +
+    "the article, with correct spelling and grammar. " +
+    "Output EXACTLY this format with no preamble or extra text:\n" +
+    "Q: <provocation>\nA: <perspective>\nQ: <provocation>\nA: <perspective>\n" +
+    "Q: <provocation>\nA: <perspective>";
+
+  const userPrompt =
+    `Article title: ${title || "(untitled)"}\n` +
+    (lang ? `Article language: ${lang}\n` : "") +
+    `\nArticle text:\n${article}`;
+
+  const res = await requestModel({
+    endpoint: config.endpoint,
+    apiKey: config.apiKey,
+    model: config.model,
+    maxTokens: 2048,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+  });
+  if (!res.ok) return res;
+  if (!res.summary) {
+    return { ok: false, error: "NO_CONTENT", message: "No questions came back." };
+  }
+  return { ok: true, text: res.summary };
 }
 
 // Correct spelling/grammar/accents in an already-written Markdown summary,

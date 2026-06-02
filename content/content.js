@@ -18,6 +18,8 @@
   let lastSummary = ""; // full copy text (summary + source line)
   let lastSummaryRaw = ""; // just the model's summary markdown
   let lastSourceLine = ""; // "\n\n<label>: <url>" or ""
+  let lastDeeper = null; // cached "Go deeper" provocations [{q, a}] for this article
+  let currentUrl = ""; // clean URL of the article currently shown (cache key)
 
   // Provider metadata for the settings UI (kept in sync with background.js).
   const PROVIDERS = {
@@ -320,6 +322,32 @@
         border: 1px solid #fbd38d; border-radius: 8px;
         padding: 8px 12px; margin: 0 0 12px;
       }
+      /* "Go deeper" provocations layer */
+      #${PANEL_ID} .asz-deeper { margin: 14px 0 0; }
+      #${PANEL_ID} button.asz-deeper-btn {
+        width: 100%; padding: 11px 12px; border: 1px dashed #cbd5e0;
+        border-radius: 10px; background: #f7fafc; color: #2b6cb0;
+        font-size: 14px; font-weight: 600; cursor: pointer; text-align: center;
+      }
+      #${PANEL_ID} button.asz-deeper-btn:hover { background: #edf4ff; border-color: #2b6cb0; }
+      #${PANEL_ID} .asz-deeper-title {
+        font-size: 13px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.04em; color: #718096; margin: 6px 0 10px;
+      }
+      #${PANEL_ID} .asz-prov {
+        border-left: 3px solid #cbd5e0; padding: 2px 0 2px 12px; margin: 0 0 14px;
+      }
+      #${PANEL_ID} .asz-prov-q {
+        font-size: 15px; font-weight: 600; color: #1a202c; margin: 0 0 6px;
+      }
+      #${PANEL_ID} .asz-prov-a > summary {
+        cursor: pointer; font-size: 12px; font-weight: 600; color: #2b6cb0;
+        user-select: none; outline: none;
+      }
+      #${PANEL_ID} .asz-prov-a > summary:hover { color: #2c5282; }
+      #${PANEL_ID} .asz-prov-a[open] > summary { margin-bottom: 6px; }
+      #${PANEL_ID} .asz-prov-a > div { font-size: 13px; color: #4a5568; }
+      #${PANEL_ID} .asz-prov-a > div p { margin: 0 0 6px; }
       #${PANEL_ID} .asz-think {
         margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px;
       }
@@ -686,6 +714,10 @@
     html += summary
       ? renderSummary(summary)
       : `<p><em>The model returned only reasoning — see below.</em></p>`;
+    // "Go deeper" — opt-in third layer of provocations (rendered on click).
+    if (summary) {
+      html += `<div class="asz-deeper" data-asz="deeper"></div>`;
+    }
     if (url) {
       html +=
         `<div class="asz-source">${escapeHtml(srcLabel)}: ` +
@@ -739,6 +771,119 @@
       shareWhatsApp("full");
       closeMenu();
     });
+
+    // "Go deeper" layer.
+    const deeper = panel.querySelector('[data-asz="deeper"]');
+    if (deeper) renderDeeperButton(deeper);
+  }
+
+  // ---- "Go deeper": reader provocations to think with ----
+
+  function renderDeeperButton(container) {
+    container.innerHTML =
+      `<button class="asz-deeper-btn" data-asz="go-deeper">` +
+      `💭 Go deeper — questions to think about</button>`;
+    container
+      .querySelector('[data-asz="go-deeper"]')
+      .addEventListener("click", () => goDeeper(container));
+  }
+
+  // Parse the model's "Q: …\nA: …" output into {q, a} pairs.
+  function parseDeeper(text) {
+    const items = [];
+    let cur = null;
+    for (const raw of (text || "").split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line) continue;
+      const qm = line.match(/^Q:\s*(.*)$/i);
+      const am = line.match(/^A:\s*(.*)$/i);
+      if (qm) {
+        if (cur) items.push(cur);
+        cur = { q: qm[1], a: "" };
+      } else if (am && cur) {
+        cur.a = (cur.a ? cur.a + " " : "") + am[1];
+      } else if (cur) {
+        cur.a = (cur.a ? cur.a + " " : "") + line; // continuation
+      }
+    }
+    if (cur) items.push(cur);
+    return items.filter((it) => it.q);
+  }
+
+  function renderDeeper(container, items) {
+    let html = `<div class="asz-deeper-title">Questions to chew on</div>`;
+    for (const it of items) {
+      html +=
+        `<div class="asz-prov">` +
+        `<p class="asz-prov-q">${renderInline(it.q)}</p>` +
+        (it.a
+          ? `<details class="asz-prov-a"><summary>See a perspective</summary>` +
+            `<div>${renderSummary(it.a)}</div></details>`
+          : "") +
+        `</div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  async function goDeeper(container) {
+    // Already have them (freshly generated or restored from cache) → just render.
+    if (lastDeeper && lastDeeper.length) {
+      renderDeeper(container, lastDeeper);
+      return;
+    }
+    container.innerHTML =
+      `<div class="asz-spinner"></div>` +
+      `<div class="asz-loading-text">Thinking of questions worth chewing on…</div>`;
+
+    const article = extractArticle();
+    if (!article) {
+      container.innerHTML = `<div class="asz-error">Couldn't read the article to go deeper.</div>`;
+      return;
+    }
+    try {
+      const resp = await browser.runtime.sendMessage({
+        type: "discuss",
+        title: article.title,
+        text: article.text,
+        lang: article.lang,
+      });
+      if (!resp || !resp.ok) {
+        if (resp && resp.error === "NO_API_KEY") {
+          showApiKeyForm(resp.message);
+          return;
+        }
+        container.innerHTML = `<div class="asz-error">${escapeHtml(
+          (resp && resp.message) || "Couldn't generate deeper questions."
+        )}</div>`;
+        return;
+      }
+      const items = parseDeeper(resp.text);
+      if (!items.length) {
+        container.innerHTML = `<div class="asz-error">No questions came back — try again.</div>`;
+        return;
+      }
+      lastDeeper = items;
+      if (currentUrl) mergeDeeperIntoCache(currentUrl, items);
+      renderDeeper(container, items);
+    } catch (e) {
+      container.innerHTML = `<div class="asz-error">Could not reach the model: ${escapeHtml(
+        e && e.message ? e.message : String(e)
+      )}</div>`;
+    }
+  }
+
+  // Persist provocations alongside the cached summary so reopening is instant.
+  async function mergeDeeperIntoCache(url, items) {
+    try {
+      const data = await browser.storage.local.get(CACHE_STORE_KEY);
+      const map = data[CACHE_STORE_KEY] || {};
+      if (map[url]) {
+        map[url].deeper = items;
+        await browser.storage.local.set({ [CACHE_STORE_KEY]: map });
+      }
+    } catch (_) {
+      /* best-effort */
+    }
   }
 
   // Pull just the "## TL;DR" section (heading + its text, up to the next
@@ -845,6 +990,8 @@
   }
 
   function renderEntry(e) {
+    currentUrl = e.url || "";
+    lastDeeper = e.deeper || null; // restore cached provocations if present
     showSummary(
       e.title,
       e.summary,
