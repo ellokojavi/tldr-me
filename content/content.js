@@ -74,6 +74,24 @@
     return escapeHtml(s).replace(/"/g, "&quot;");
   }
 
+  // Localized UI strings, keyed by the article's language code. English fallback.
+  const UI_STRINGS = {
+    en: { reading: "Reading the article and summarizing…", thinking: "Thinking of questions worth chewing on…", chewTitle: "Questions to chew on", seePerspective: "See a perspective", goDeeper: "Go deeper — questions to think about" },
+    es: { reading: "Leyendo el artículo y resumiendo…", thinking: "Pensando en preguntas para reflexionar…", chewTitle: "Preguntas para reflexionar", seePerspective: "Ver una perspectiva", goDeeper: "Profundizar — preguntas para pensar" },
+    pt: { reading: "Lendo o artigo e resumindo…", thinking: "Pensando em perguntas para refletir…", chewTitle: "Perguntas para refletir", seePerspective: "Ver uma perspetiva", goDeeper: "Aprofundar — perguntas para pensar" },
+    fr: { reading: "Lecture de l'article et résumé…", thinking: "Je réfléchis à des questions à méditer…", chewTitle: "Questions à méditer", seePerspective: "Voir une perspective", goDeeper: "Aller plus loin — questions à se poser" },
+    de: { reading: "Artikel wird gelesen und zusammengefasst…", thinking: "Ich überlege Fragen zum Nachdenken…", chewTitle: "Fragen zum Nachdenken", seePerspective: "Eine Perspektive ansehen", goDeeper: "Tiefer gehen — Fragen zum Nachdenken" },
+    it: { reading: "Lettura dell'articolo e riassunto…", thinking: "Sto pensando a domande su cui riflettere…", chewTitle: "Domande su cui riflettere", seePerspective: "Vedi una prospettiva", goDeeper: "Approfondisci — domande su cui riflettere" },
+  };
+
+  function uiLang() {
+    return ((document.documentElement.lang || "").split("-")[0] || "").toLowerCase();
+  }
+  function t(key) {
+    const lang = uiLang();
+    return (UI_STRINGS[lang] && UI_STRINGS[lang][key]) || UI_STRINGS.en[key];
+  }
+
   // Tracking/analytics query params that only add length to a shared URL.
   const TRACKING_PARAM =
     /^(utm_|fbclid$|gclid$|gclsrc$|dclid$|msclkid$|mc_cid$|mc_eid$|igshid$|_ga$|yclid$|_hsenc$|_hsmi$|vero_id$|oly_enc_id$|oly_anon_id$|ref_src$|guccounter$|guce_referrer|spm$|scm$)/i;
@@ -202,7 +220,12 @@
     style.textContent = `
       #${PANEL_ID} {
         position: fixed; top: 0; right: 0; height: 100vh; width: 380px;
-        max-width: 90vw; background: #ffffff; color: #1a202c;
+        max-width: 90vw; color: #1a202c;
+        /* Subtly translucent frosted pane: you sense content behind it, but the
+           blur + near-opaque white keep text contrast crisp. */
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(6px) saturate(1.05);
+        -webkit-backdrop-filter: blur(6px) saturate(1.05);
         box-shadow: -2px 0 16px rgba(0,0,0,0.18); z-index: 2147483647;
         display: flex; flex-direction: column;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -338,7 +361,8 @@
         border-left: 3px solid #cbd5e0; padding: 2px 0 2px 12px; margin: 0 0 14px;
       }
       #${PANEL_ID} .asz-prov-q {
-        font-size: 15px; font-weight: 600; color: #1a202c; margin: 0 0 6px;
+        font-size: 15px; font-weight: 400; font-style: italic; color: #4a5568;
+        margin: 0 0 6px;
       }
       #${PANEL_ID} .asz-prov-a > summary {
         cursor: pointer; font-size: 12px; font-weight: 600; color: #2b6cb0;
@@ -372,7 +396,9 @@
         border-top-color: #2b6cb0; border-radius: 50%;
         animation: asz-spin 0.8s linear infinite; margin: 24px auto 12px;
       }
-      #${PANEL_ID} .asz-loading-text { text-align: center; color: #4a5568; }
+      #${PANEL_ID} .asz-loading-text {
+        text-align: center; color: #a0aec0; font-style: italic; font-size: 13px;
+      }
       #${PANEL_ID} .asz-error {
         background: #fff5f5; border: 1px solid #feb2b2; color: #c53030;
         border-radius: 8px; padding: 12px;
@@ -502,7 +528,7 @@
   function showLoading() {
     setBody(
       `<div class="asz-spinner"></div>` +
-        `<div class="asz-loading-text">Reading the article and summarizing…</div>`
+        `<div class="asz-loading-text">${escapeHtml(t("reading"))}</div>`
     );
   }
 
@@ -782,7 +808,7 @@
   function renderDeeperButton(container) {
     container.innerHTML =
       `<button class="asz-deeper-btn" data-asz="go-deeper">` +
-      `💭 Go deeper — questions to think about</button>`;
+      `💭 ${escapeHtml(t("goDeeper"))}</button>`;
     container
       .querySelector('[data-asz="go-deeper"]')
       .addEventListener("click", () => goDeeper(container));
@@ -811,13 +837,13 @@
   }
 
   function renderDeeper(container, items) {
-    let html = `<div class="asz-deeper-title">Questions to chew on</div>`;
+    let html = `<div class="asz-deeper-title">${escapeHtml(t("chewTitle"))}</div>`;
     for (const it of items) {
       html +=
         `<div class="asz-prov">` +
         `<p class="asz-prov-q">${renderInline(it.q)}</p>` +
         (it.a
-          ? `<details class="asz-prov-a"><summary>See a perspective</summary>` +
+          ? `<details class="asz-prov-a"><summary>${escapeHtml(t("seePerspective"))}</summary>` +
             `<div>${renderSummary(it.a)}</div></details>`
           : "") +
         `</div>`;
@@ -833,7 +859,7 @@
     }
     container.innerHTML =
       `<div class="asz-spinner"></div>` +
-      `<div class="asz-loading-text">Thinking of questions worth chewing on…</div>`;
+      `<div class="asz-loading-text">${escapeHtml(t("thinking"))}</div>`;
 
     const article = extractArticle();
     if (!article) {
