@@ -98,6 +98,9 @@ details.
 - **Share.** Copy to clipboard, or open the installed **WhatsApp** app with the
   summary prefilled — choose to send just the **TL;DR** or the **TL;DR + key
   points**; either way the article link is included.
+- **Print / save as PDF.** A **Print** button builds a clean page — the summary,
+  the *Go deeper* questions and perspectives (if generated), then the full
+  article below a divider — and opens your print dialog (print or save as PDF).
 - **Summaries are remembered.** Once an article is summarized, the result is
   saved per URL — revisit or reload the page and the summary appears instantly
   with no new API call. Press **↻** to force a fresh one.
@@ -203,6 +206,7 @@ Packaging and signing the extension removes this caveat entirely.
 |--------|-----|
 | Summarize | Click the on-page **TL;DR** tab or the toolbar icon |
 | Copy | **Copy** button in the Share row (turns into "Copied" for 5s) |
+| Print / save as PDF | **Print** in the Share row → print dialog with summary + full article |
 | Share to WhatsApp | the green WhatsApp **Share** button → choose "TL;DR only" or "TL;DR + Key points" (link always included) |
 | Go deeper | **💭 Go deeper** below the summary → 3 questions to chew on; tap *See a perspective* on any |
 | Re-summarize (fresh) | **↻** in the panel header — ignores the saved copy |
@@ -274,6 +278,13 @@ HTML-escaped or static templates).
 ---
 
 ## Changelog
+
+### Unreleased
+
+- **Print / save as PDF** — a Print button that lays out the summary, the
+  Go-deeper questions, and the full article on one printable page.
+- Modernized panel header (blue gradient + brand mark) and a translucent
+  frosted pane.
 
 ### 1.2.0
 

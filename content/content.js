@@ -83,12 +83,12 @@
 
   // Localized UI strings, keyed by the article's language code. English fallback.
   const UI_STRINGS = {
-    en: { reading: "Reading the article and summarizing…", thinking: "Thinking of questions worth chewing on…", chewTitle: "Questions to chew on", seePerspective: "See a perspective", goDeeper: "Go deeper — questions to think about" },
-    es: { reading: "Leyendo el artículo y resumiendo…", thinking: "Pensando en preguntas para reflexionar…", chewTitle: "Preguntas para reflexionar", seePerspective: "Ver una perspectiva", goDeeper: "Profundizar — preguntas para pensar" },
-    pt: { reading: "Lendo o artigo e resumindo…", thinking: "Pensando em perguntas para refletir…", chewTitle: "Perguntas para refletir", seePerspective: "Ver uma perspetiva", goDeeper: "Aprofundar — perguntas para pensar" },
-    fr: { reading: "Lecture de l'article et résumé…", thinking: "Je réfléchis à des questions à méditer…", chewTitle: "Questions à méditer", seePerspective: "Voir une perspective", goDeeper: "Aller plus loin — questions à se poser" },
-    de: { reading: "Artikel wird gelesen und zusammengefasst…", thinking: "Ich überlege Fragen zum Nachdenken…", chewTitle: "Fragen zum Nachdenken", seePerspective: "Eine Perspektive ansehen", goDeeper: "Tiefer gehen — Fragen zum Nachdenken" },
-    it: { reading: "Lettura dell'articolo e riassunto…", thinking: "Sto pensando a domande su cui riflettere…", chewTitle: "Domande su cui riflettere", seePerspective: "Vedi una prospettiva", goDeeper: "Approfondisci — domande su cui riflettere" },
+    en: { reading: "Reading the article and summarizing…", thinking: "Thinking of questions worth chewing on…", chewTitle: "Questions to chew on", seePerspective: "See a perspective", goDeeper: "Go deeper — questions to think about", source: "Source", fullArticle: "Full article", summaryHeading: "Summary" },
+    es: { reading: "Leyendo el artículo y resumiendo…", thinking: "Pensando en preguntas para reflexionar…", chewTitle: "Preguntas para reflexionar", seePerspective: "Ver una perspectiva", goDeeper: "Profundizar — preguntas para pensar", source: "Fuente", fullArticle: "Artículo completo", summaryHeading: "Resumen" },
+    pt: { reading: "Lendo o artigo e resumindo…", thinking: "Pensando em perguntas para refletir…", chewTitle: "Perguntas para refletir", seePerspective: "Ver uma perspetiva", goDeeper: "Aprofundar — perguntas para pensar", source: "Fonte", fullArticle: "Artigo completo", summaryHeading: "Resumo" },
+    fr: { reading: "Lecture de l'article et résumé…", thinking: "Je réfléchis à des questions à méditer…", chewTitle: "Questions à méditer", seePerspective: "Voir une perspective", goDeeper: "Aller plus loin — questions à se poser", source: "Source", fullArticle: "Article complet", summaryHeading: "Résumé" },
+    de: { reading: "Artikel wird gelesen und zusammengefasst…", thinking: "Ich überlege Fragen zum Nachdenken…", chewTitle: "Fragen zum Nachdenken", seePerspective: "Eine Perspektive ansehen", goDeeper: "Tiefer gehen — Fragen zum Nachdenken", source: "Quelle", fullArticle: "Vollständiger Artikel", summaryHeading: "Zusammenfassung" },
+    it: { reading: "Lettura dell'articolo e riassunto…", thinking: "Sto pensando a domande su cui riflettere…", chewTitle: "Domande su cui riflettere", seePerspective: "Vedi una prospettiva", goDeeper: "Approfondisci — domande su cui riflettere", source: "Fonte", fullArticle: "Articolo completo", summaryHeading: "Riepilogo" },
   };
 
   function uiLang() {
@@ -295,6 +295,8 @@
       }
       #${PANEL_ID} button.asz-share-btn:hover { background: #2c5282; }
       #${PANEL_ID} button.asz-share-btn.asz-copied { background: #38a169; }
+      #${PANEL_ID} button.asz-share-btn.asz-print { background: #475569; color: #ffffff; }
+      #${PANEL_ID} button.asz-share-btn.asz-print:hover { background: #334155; }
       #${PANEL_ID} button.asz-share-btn.asz-wa { background: #25d366; color: #ffffff; }
       #${PANEL_ID} button.asz-share-btn.asz-wa:hover { background: #1fb457; }
       #${PANEL_ID} button.asz-share-btn svg { width: 16px; height: 16px; display: block; }
@@ -750,6 +752,7 @@
     html +=
       `<div class="asz-share">` +
       `<button class="asz-share-btn" data-asz="copy" title="Copy summary to clipboard">Copy</button>` +
+      `<button class="asz-share-btn asz-print" data-asz="print" title="Print or save as PDF (summary + full article)">Print</button>` +
       `<div class="asz-wa-wrap">` +
       `<button class="asz-share-btn asz-wa" data-asz="whatsapp" title="Share via WhatsApp" aria-haspopup="true">` +
       WHATSAPP_ICON +
@@ -789,6 +792,7 @@
     panel.querySelector('[data-asz="copy"]').addEventListener("click", (e) => {
       copySummary(e.currentTarget);
     });
+    panel.querySelector('[data-asz="print"]').addEventListener("click", printSummary);
 
     // WhatsApp button opens a small menu to pick what to share.
     const waBtn = panel.querySelector('[data-asz="whatsapp"]');
@@ -983,6 +987,117 @@
     document.body.appendChild(a);
     a.click();
     a.remove();
+  }
+
+  // ---- Print / save-as-PDF ----
+
+  // Build a standalone, print-friendly HTML document: title + source, the
+  // summary (TL;DR + Key points), the "Go deeper" questions & perspectives if
+  // generated, then a divider and the full article text.
+  function buildPrintDoc() {
+    const article = extractArticle(); // {title, text, lang} or null
+    const docTitle =
+      (article && article.title) || document.title || "Article";
+    const url = currentUrl || cleanUrl();
+
+    const summaryHtml = lastSummaryRaw ? renderSummary(lastSummaryRaw) : "";
+
+    let deeperHtml = "";
+    if (lastDeeper && lastDeeper.length) {
+      deeperHtml = `<h2 class="p-h2">${escapeHtml(t("chewTitle"))}</h2>`;
+      for (const it of lastDeeper) {
+        deeperHtml +=
+          `<div class="p-prov"><p class="p-prov-q">${renderInline(it.q)}</p>` +
+          (it.a ? `<div class="p-prov-a">${renderSummary(it.a)}</div>` : "") +
+          `</div>`;
+      }
+    }
+
+    let articleHtml;
+    if (article && article.text) {
+      articleHtml = article.text
+        .split(/\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((p) => `<p>${escapeHtml(p)}</p>`)
+        .join("");
+    } else {
+      articleHtml = `<p><em>The full article text could not be extracted.</em></p>`;
+    }
+
+    const css =
+      `*{box-sizing:border-box}` +
+      `body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#1a202c;max-width:720px;margin:28px auto;padding:0 28px;line-height:1.55}` +
+      `.p-title{font-size:24px;margin:0 0 6px;line-height:1.25}` +
+      `.p-src{font-size:12px;color:#718096;margin:0 0 20px;word-break:break-all}` +
+      `.p-src a{color:#2b6cb0}` +
+      `.asz-tldr{background:#ebf4ff;border:1px solid #bee3f8;border-left:4px solid #2b6cb0;border-radius:8px;padding:10px 16px;margin:0 0 16px}` +
+      `.asz-tldr h3,.asz-tldr h4{margin-top:0}` +
+      `h3{font-size:19px;color:#2b6cb0;margin:18px 0 8px}` +
+      `h4{font-size:16px;color:#2b6cb0;margin:16px 0 6px}` +
+      `h5{font-size:14px;color:#4a5568;margin:12px 0 4px}` +
+      `ul,ol{padding-left:22px;margin:0 0 12px}li{margin:0 0 6px}` +
+      `strong{font-weight:700}em{font-style:italic}` +
+      `.p-h2{font-size:18px;margin:22px 0 10px;border-bottom:2px solid #e2e8f0;padding-bottom:4px}` +
+      `.p-prov{border-left:3px solid #cbd5e0;padding-left:12px;margin:0 0 14px}` +
+      `.p-prov-q{font-style:italic;font-weight:600;color:#4a5568;margin:0 0 6px}` +
+      `.p-prov-a{font-size:14px;color:#2d3748}.p-prov-a p{margin:0 0 6px}` +
+      `.p-divider{border:none;border-top:2px dashed #cbd5e0;margin:28px 0}` +
+      `.p-article p{margin:0 0 12px}` +
+      `@media print{a{color:#1a202c;text-decoration:none}}`;
+
+    return (
+      `<!DOCTYPE html><html lang="${escapeAttr(
+        (article && article.lang) || document.documentElement.lang || ""
+      )}"><head><meta charset="utf-8">` +
+      `<title>${escapeHtml(docTitle)} — TL;DR Me</title><style>${css}</style></head><body>` +
+      `<h1 class="p-title">${escapeHtml(docTitle)}</h1>` +
+      (url
+        ? `<p class="p-src">${escapeHtml(t("source"))}: <a href="${escapeAttr(url)}">${escapeHtml(url)}</a></p>`
+        : "") +
+      `<div class="p-summary">${summaryHtml}</div>` +
+      deeperHtml +
+      `<hr class="p-divider">` +
+      `<h2 class="p-h2">${escapeHtml(t("fullArticle"))}</h2>` +
+      `<div class="p-article">${articleHtml}</div>` +
+      `</body></html>`
+    );
+  }
+
+  // Render the print doc in a hidden iframe and open the print dialog — no
+  // popup window or extra tab. The iframe is removed after printing.
+  function printSummary() {
+    if (!lastSummaryRaw) return;
+    const html = buildPrintDoc();
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.style.cssText =
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    const win = iframe.contentWindow;
+    let removed = false;
+    const cleanup = () => {
+      if (removed) return;
+      removed = true;
+      setTimeout(() => iframe.remove(), 200);
+    };
+    win.addEventListener("afterprint", cleanup);
+    // Give the document a moment to lay out, then open the print dialog.
+    setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+      } catch (_) {
+        iframe.remove();
+      }
+    }, 350);
+    setTimeout(cleanup, 60000); // safety net if afterprint never fires
   }
 
   // Extract the article. Returns { title, text, lang } or null.
