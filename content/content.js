@@ -281,7 +281,7 @@
       #${PANEL_ID} .asz-model-badge {
         display: inline-flex; align-items: center; justify-content: center;
         height: 30px; min-width: 30px; font-size: 17px; line-height: 1;
-        cursor: help; user-select: none;
+        cursor: default; user-select: none;
       }
       #${PANEL_ID} .asz-body { padding: 16px; overflow-y: auto; flex: 1 1 auto; }
       #${PANEL_ID} .asz-title {
