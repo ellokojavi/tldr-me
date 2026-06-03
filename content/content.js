@@ -455,6 +455,25 @@
         display: block; font-size: 13px; font-weight: 600; color: #4a5568; margin-top: 4px;
       }
       #${PANEL_ID} .asz-settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      #${PANEL_ID} .asz-provider-list {
+        margin: 4px 0 6px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
+      }
+      #${PANEL_ID} .asz-prov-row {
+        display: flex; align-items: center; gap: 9px; padding: 9px 11px;
+        font-size: 13px; cursor: pointer; background: #ffffff;
+      }
+      #${PANEL_ID} .asz-prov-row + .asz-prov-row { border-top: 1px solid #edf2f7; }
+      #${PANEL_ID} .asz-prov-row input[type="radio"] { margin: 0; }
+      #${PANEL_ID} .asz-prov-name { font-weight: 600; color: #1a202c; }
+      #${PANEL_ID} .asz-prov-status { margin-left: auto; font-size: 12px; color: #718096; }
+      #${PANEL_ID} .asz-prov-row.asz-disabled { cursor: default; }
+      #${PANEL_ID} .asz-prov-row.asz-disabled .asz-prov-name,
+      #${PANEL_ID} .asz-prov-row.asz-disabled .asz-prov-status { color: #a0aec0; }
+      #${PANEL_ID} .asz-check {
+        display: flex; align-items: center; gap: 8px; font-size: 13px;
+        color: #2d3748; margin: 8px 0 0; cursor: pointer; font-weight: 600;
+      }
+      #${PANEL_ID} .asz-check input { margin: 0; }
       #${PANEL_ID} .asz-status {
         font-size: 12px; color: #2f855a; margin: 10px 0 0; font-weight: 600;
       }
@@ -677,16 +696,21 @@
     const stored = await browser.storage.local.get([
       "minimaxApiKey", "geminiApiKey", "minimaxModel", "geminiModel", "activeProvider",
     ]);
-    const keyOf = (p) => stored[`${p}ApiKey`] || "";
-    let selected = stored.activeProvider;
-    if (!selected || !PROVIDERS[selected]) {
-      selected = PROVIDER_ORDER.find((p) => keyOf(p)) || "minimax";
-    }
+    const keyOf = (p) => (stored[`${p}ApiKey`] || "").trim();
+    const configured = () => PROVIDER_ORDER.filter((p) => keyOf(p));
+    const activeProvider = () => {
+      let a = stored.activeProvider;
+      if (!a || !PROVIDERS[a] || !keyOf(a)) a = configured()[0] || null;
+      return a;
+    };
+    let selected = activeProvider() || "minimax";
 
     const panel = setBody(
       `<div class="asz-keyform">` +
         `<h3 class="asz-settings-title">Settings</h3>` +
-        `<label class="asz-label">Provider</label>` +
+        `<label class="asz-label">Default provider</label>` +
+        `<div class="asz-provider-list" data-asz="provider-list"></div>` +
+        `<label class="asz-label">Add or change a key</label>` +
         `<select data-asz="provider">${providerOptionsHtml(selected)}</select>` +
         `<div data-asz="provider-fields"></div>` +
         `<div class="asz-settings-actions">` +
@@ -699,24 +723,73 @@
         `</div>`
     );
 
+    const listEl = panel.querySelector('[data-asz="provider-list"]');
     const providerSel = panel.querySelector('[data-asz="provider"]');
     const fields = panel.querySelector('[data-asz="provider-fields"]');
     const status = panel.querySelector('[data-asz="settings-status"]');
+    const setStatus = (text, isError) => {
+      status.textContent = text;
+      status.classList.toggle("asz-field-error", Boolean(isError));
+    };
 
+    // The provider list: which providers have a key + a radio to pick the default.
+    function renderList() {
+      const act = activeProvider();
+      listEl.innerHTML = PROVIDER_ORDER.map((p) => {
+        const has = keyOf(p);
+        return (
+          `<label class="asz-prov-row${has ? "" : " asz-disabled"}">` +
+          `<input type="radio" name="asz-default" value="${p}"${p === act ? " checked" : ""}${has ? "" : " disabled"}>` +
+          `<span class="asz-prov-name">${escapeHtml(PROVIDERS[p].label)}</span>` +
+          `<span class="asz-prov-status">${has ? "key set" : "no key"}</span>` +
+          `</label>`
+        );
+      }).join("");
+      listEl.querySelectorAll('input[name="asz-default"]').forEach((r) => {
+        r.addEventListener("change", async () => {
+          const resp = await browser.runtime.sendMessage({
+            type: "setDefaultProvider",
+            provider: r.value,
+          });
+          if (resp && resp.ok) {
+            stored.activeProvider = r.value;
+            setStatus(`Default set to ${PROVIDERS[r.value].label}.`, false);
+            updateModelBadge();
+            renderFields(providerSel.value);
+          } else {
+            setStatus((resp && resp.message) || "Could not set default.", true);
+            renderList();
+          }
+        });
+      });
+    }
+
+    // The add/edit form for the selected provider, with a contextual default control.
     function renderFields(p) {
+      const hasKey = keyOf(p);
+      const noKeysAtAll = configured().length === 0;
+      let defaultControl;
+      if (noKeysAtAll) {
+        // First key overall → it becomes the default automatically.
+        defaultControl =
+          `<p class="asz-note">This will be your default provider.</p>` +
+          `<input type="hidden" data-asz="make-default" value="1">`;
+      } else {
+        const checked = p === activeProvider() ? " checked" : "";
+        defaultControl =
+          `<label class="asz-check"><input type="checkbox" data-asz="make-default"${checked}> Make this the default provider</label>`;
+      }
       fields.innerHTML =
         `<label class="asz-label">${escapeHtml(PROVIDERS[p].label)} API key</label>` +
         `<input type="password" data-asz="key" value="${escapeAttr(keyOf(p))}" placeholder="Paste API key" autocomplete="off" />` +
         `<label class="asz-label">Model</label>` +
         `<select data-asz="model">${modelOptionsHtml(p, stored[`${p}Model`])}</select>` +
-        `<p class="asz-note">${escapeHtml(PROVIDERS[p].hint)} The first key you add becomes the default provider.</p>`;
+        defaultControl +
+        `<p class="asz-note">${escapeHtml(PROVIDERS[p].hint)}</p>`;
     }
-    renderFields(selected);
 
-    const setStatus = (text, isError) => {
-      status.textContent = text;
-      status.classList.toggle("asz-field-error", Boolean(isError));
-    };
+    renderList();
+    renderFields(selected);
 
     providerSel.addEventListener("change", () => {
       renderFields(providerSel.value);
@@ -727,6 +800,12 @@
       const p = providerSel.value;
       const key = fields.querySelector('[data-asz="key"]').value.trim();
       const model = fields.querySelector('[data-asz="model"]').value;
+      const mdEl = fields.querySelector('[data-asz="make-default"]');
+      const makeDefault = mdEl
+        ? mdEl.type === "checkbox"
+          ? mdEl.checked
+          : mdEl.value === "1"
+        : false;
       const check = validateKey(p, key);
       if (!check.ok) {
         setStatus(check.message, true);
@@ -737,22 +816,24 @@
         provider: p,
         key,
         model,
-        setActive: true,
+        makeDefault,
       });
       if (resp && resp.ok === false) {
         setStatus(resp.message || "Could not save the key.", true);
         return;
       }
-      // Keep the local copy in sync so switching providers shows saved values.
       stored[`${p}ApiKey`] = key;
       stored[`${p}Model`] = model;
+      if (resp && "activeProvider" in resp) stored.activeProvider = resp.activeProvider || "";
+      renderList();
+      renderFields(providerSel.value);
+      updateModelBadge();
       setStatus(
         key
-          ? `Saved ✓ — ${PROVIDERS[p].label} is now active.`
+          ? `Saved ✓ — ${PROVIDERS[p].label} key updated.`
           : `Saved ✓ — ${PROVIDERS[p].label} key cleared.`,
         false
       );
-      updateModelBadge(); // keep the robot tooltip in sync with the new model
     });
 
     const cancelBtn = panel.querySelector('[data-asz="cancel-settings"]');

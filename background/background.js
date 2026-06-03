@@ -324,6 +324,12 @@ browser.runtime.onMessage.addListener((message, sender) => {
   if (message && message.type === "saveApiKey") {
     return handleSaveApiKey(message);
   }
+  if (message && message.type === "setDefaultProvider") {
+    return handleSetDefaultProvider(message);
+  }
+  if (message && message.type === "getProviderState") {
+    return getProviderState();
+  }
   if (message && message.type === "openOptions") {
     browser.runtime.openOptionsPage();
     return Promise.resolve({ ok: true });
@@ -331,8 +337,34 @@ browser.runtime.onMessage.addListener((message, sender) => {
   return false;
 });
 
-// Save a provider's key (and optional model). The first key ever added — or an
-// explicit setActive — becomes the active provider used for summaries.
+// Snapshot of which providers have a key + which is the default. Used by the
+// Settings UI to render the provider list.
+async function getProviderState() {
+  const fields = PROVIDER_ORDER.map((p) => `${p}ApiKey`);
+  const s = await browser.storage.local.get([...fields, "activeProvider"]);
+  const has = {};
+  for (const p of PROVIDER_ORDER) has[p] = Boolean((s[`${p}ApiKey`] || "").trim());
+  let active = s.activeProvider;
+  if (!active || !has[active]) active = PROVIDER_ORDER.find((p) => has[p]) || null;
+  return { ok: true, providers: PROVIDER_ORDER, has, active };
+}
+
+// Set the default (active) provider — only if it actually has a key.
+async function handleSetDefaultProvider(message) {
+  const provider = message.provider;
+  if (!PROVIDERS[provider]) return { ok: false, message: "Unknown provider." };
+  const s = await browser.storage.local.get([`${provider}ApiKey`]);
+  if (!(s[`${provider}ApiKey`] || "").trim()) {
+    return { ok: false, message: "That provider has no key yet." };
+  }
+  await browser.storage.local.set({ activeProvider: provider });
+  return { ok: true, activeProvider: provider };
+}
+
+// Save a provider's key (and optional model). `makeDefault` (or legacy
+// `setActive`) makes it the default; otherwise the existing default is kept.
+// A valid default is always maintained: the first key added becomes the
+// default, and clearing the active key falls back to any provider that has one.
 async function handleSaveApiKey(message) {
   const provider = PROVIDERS[message.provider] ? message.provider : "minimax";
   const trimmedKey = (message.key || "").trim();
@@ -343,17 +375,28 @@ async function handleSaveApiKey(message) {
     return { ok: false, error: "INVALID_KEY", message: check.message };
   }
 
-  const current = await browser.storage.local.get(["activeProvider"]);
+  const fields = PROVIDER_ORDER.map((p) => `${p}ApiKey`);
+  const s = await browser.storage.local.get([...fields, "activeProvider"]);
+
   const patch = {};
   patch[`${provider}ApiKey`] = trimmedKey;
   if (message.model) patch[`${provider}Model`] = message.model;
-  // Only make this provider active if it actually has a key — so clearing a key
-  // never selects a keyless provider, and the first real key becomes the default.
-  if (trimmedKey && (message.setActive || !current.activeProvider)) {
-    patch.activeProvider = provider;
+
+  // Which providers have a key after this save?
+  const keyAfter = {};
+  for (const p of PROVIDER_ORDER) {
+    keyAfter[p] = p === provider ? trimmedKey : (s[`${p}ApiKey`] || "").trim();
   }
+  const firstWithKey = PROVIDER_ORDER.find((p) => keyAfter[p]) || null;
+
+  let active = s.activeProvider;
+  const wantDefault = Boolean(message.makeDefault || message.setActive);
+  if (wantDefault && trimmedKey) active = provider;
+  if (!active || !keyAfter[active]) active = firstWithKey; // keep a valid default
+  patch.activeProvider = active || "";
+
   await browser.storage.local.set(patch);
-  return { ok: true };
+  return { ok: true, activeProvider: active || null };
 }
 
 async function handleSummarize({ title, text, lang }) {
