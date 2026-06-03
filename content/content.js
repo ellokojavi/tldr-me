@@ -278,6 +278,11 @@
       #${PANEL_ID} button.asz-btn:hover { background: rgba(255,255,255,0.28); }
       #${PANEL_ID} button.asz-btn:active { transform: translateY(1px); }
       #${PANEL_ID} button.asz-btn.asz-btn-icon { font-size: 17px; }
+      #${PANEL_ID} .asz-model-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        height: 30px; min-width: 30px; font-size: 17px; line-height: 1;
+        cursor: help; user-select: none;
+      }
       #${PANEL_ID} .asz-body { padding: 16px; overflow-y: auto; flex: 1 1 auto; }
       #${PANEL_ID} .asz-title {
         font-size: 18px; color: #1a202c; margin: 0 0 10px; font-weight: 700;
@@ -493,7 +498,7 @@
           <h2>TL;DR&nbsp;Me</h2>
         </div>
         <div class="asz-actions">
-          <button class="asz-btn asz-btn-icon" data-asz="model-badge" title="Checking active model…" aria-label="Active model">🤖</button>
+          <span class="asz-model-badge" data-asz="model-badge" title="Checking active model…" aria-label="Active model">🤖</span>
           <button class="asz-btn asz-btn-icon" data-asz="settings" title="Settings (API key &amp; model)">⚙</button>
           <button class="asz-btn asz-btn-icon" data-asz="refresh" title="Regenerate (ignore the saved summary)">↻</button>
           <button class="asz-btn asz-btn-icon" data-asz="close" title="Collapse panel">→</button>
@@ -511,9 +516,6 @@
     });
     panel.querySelector('[data-asz="settings"]').addEventListener("click", () => {
       showSettings();
-    });
-    panel.querySelector('[data-asz="model-badge"]').addEventListener("click", () => {
-      showSettings(); // clicking the robot also opens settings (hover shows the model)
     });
     updateModelBadge();
     return panel;

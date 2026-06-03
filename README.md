@@ -285,7 +285,7 @@ HTML-escaped or static templates).
 ### Unreleased
 
 - **Active-model indicator** — a 🤖 in the panel header shows the active
-  provider + model on hover (and opens Settings on click).
+  provider + model on hover.
 - **Proofreading extended to Go deeper** — the provocations now get the same
   spelling/grammar pass as the summary.
 
