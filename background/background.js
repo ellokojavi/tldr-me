@@ -555,7 +555,39 @@ async function handleDiscuss({ title, text, lang }) {
     }
     if (!languageMismatch(articleScript, res.summary)) break;
   }
+  // Proofreading pass (the model is weak at some languages' spelling, e.g.
+  // "reconcile"/"cuestionna" in Spanish). Keeps the Q:/A: structure & language.
+  const corrected = await proofreadDiscuss(config, res.summary, articleScript);
+  if (corrected) res.summary = corrected;
   return { ok: true, text: res.summary };
+}
+
+// Spelling/grammar proofread for the "Go deeper" Q:/A: provocations. Returns
+// corrected text, or null if the pass failed / broke the structure / changed
+// language / dropped content (so the caller keeps the original).
+async function proofreadDiscuss(config, text, articleScript) {
+  const sys =
+    "You are a meticulous proofreader. Correct ONLY spelling, grammar, " +
+    "accent/diacritic, and punctuation mistakes in the text below. Keep the " +
+    "EXACT line structure (every line starts with 'Q:' or 'A:'), keep the same " +
+    "language and meaning, and change nothing else. Return ONLY the corrected " +
+    "text — no preamble, no commentary.";
+  const r = await requestModel({
+    endpoint: config.endpoint,
+    apiKey: config.apiKey,
+    model: config.model,
+    maxTokens: 2048,
+    messages: [
+      { role: "system", content: sys },
+      { role: "user", content: text },
+    ],
+  });
+  if (!r.ok || !r.summary) return null;
+  if (r.finishReason === "length") return null;
+  if (languageMismatch(articleScript, r.summary)) return null;
+  if (!/^\s*Q:/im.test(r.summary)) return null; // structure must survive
+  if (r.summary.trim().length < text.trim().length * 0.6) return null;
+  return r.summary.trim();
 }
 
 // Correct spelling/grammar/accents in an already-written Markdown summary,

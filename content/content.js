@@ -493,6 +493,7 @@
           <h2>TL;DR&nbsp;Me</h2>
         </div>
         <div class="asz-actions">
+          <button class="asz-btn asz-btn-icon" data-asz="model-badge" title="Checking active model…" aria-label="Active model">🤖</button>
           <button class="asz-btn asz-btn-icon" data-asz="settings" title="Settings (API key &amp; model)">⚙</button>
           <button class="asz-btn asz-btn-icon" data-asz="refresh" title="Regenerate (ignore the saved summary)">↻</button>
           <button class="asz-btn asz-btn-icon" data-asz="close" title="Collapse panel">→</button>
@@ -511,7 +512,34 @@
     panel.querySelector('[data-asz="settings"]').addEventListener("click", () => {
       showSettings();
     });
+    panel.querySelector('[data-asz="model-badge"]').addEventListener("click", () => {
+      showSettings(); // clicking the robot also opens settings (hover shows the model)
+    });
+    updateModelBadge();
     return panel;
+  }
+
+  // Fill the robot badge's tooltip with the active provider + model, so hovering
+  // shows which model is in use without opening Settings.
+  async function updateModelBadge() {
+    const el = document.querySelector(`#${PANEL_ID} [data-asz="model-badge"]`);
+    if (!el) return;
+    try {
+      const s = await browser.storage.local.get([
+        "minimaxApiKey", "geminiApiKey", "minimaxModel", "geminiModel", "activeProvider",
+      ]);
+      const keyOf = (p) => (s[`${p}ApiKey`] || "").trim();
+      let p = s.activeProvider;
+      if (!p || !PROVIDERS[p] || !keyOf(p)) p = PROVIDER_ORDER.find((x) => keyOf(x)) || null;
+      if (!p) {
+        el.title = "No model configured — open Settings (⚙)";
+        return;
+      }
+      const model = s[`${p}Model`] || PROVIDERS[p].defaultModel;
+      el.title = `Active model: ${PROVIDERS[p].label} · ${model}`;
+    } catch (_) {
+      el.title = "Active model";
+    }
   }
 
   async function copySummary(btn) {
@@ -722,6 +750,7 @@
           : `Saved ✓ — ${PROVIDERS[p].label} key cleared.`,
         false
       );
+      updateModelBadge(); // keep the robot tooltip in sync with the new model
     });
 
     const cancelBtn = panel.querySelector('[data-asz="cancel-settings"]');

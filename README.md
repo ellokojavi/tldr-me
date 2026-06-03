@@ -84,10 +84,11 @@ details.
 - **Structured Markdown summary.** A highlighted **TL;DR** box plus a
   **Key points** section with proper bullets, numbered steps, headings, and
   bold emphasis.
-- **Proofread for quality.** The summary is generated with a strict
-  spelling/grammar/accents instruction, then run through a quick second pass
-  that fixes any orthographic errors without changing meaning, structure, or
-  language (skipped if it would alter content). Runs once per article (cached).
+- **Proofread for quality.** The summary **and** the Go-deeper questions are
+  generated with a strict spelling/grammar/accents instruction, then run through
+  a quick second pass that fixes any orthographic errors without changing
+  meaning, structure, or language (skipped if it would alter content). Runs once
+  per article (cached).
 - **Language-faithful.** The summary is written in the article's language. A
   built-in guard detects wrong-language output (the common "answered in
   Chinese" failure) and automatically retries with escalating constraints — the
@@ -113,7 +114,8 @@ details.
   a collapsed "Show model reasoning" section so the summary stays front and
   center.
 - **In-app settings.** Set/replace your API key and pick the model from a gear
-  menu in the panel — no need to dig through the add-ons page.
+  menu in the panel — no need to dig through the add-ons page. A **🤖** in the
+  header shows the active provider + model on hover.
 - **CSS-isolated UI.** The panel forces its own fonts and list styles so host
   pages can't bleed into the summary's appearance.
 
@@ -209,6 +211,7 @@ Packaging and signing the extension removes this caveat entirely.
 | Print / save as PDF | **Print** in the Share row → print dialog with summary + full article |
 | Share to WhatsApp | the green WhatsApp **Share** button → choose "TL;DR only" or "TL;DR + Key points" (link always included) |
 | Go deeper | **💭 Go deeper** below the summary → 3 questions to chew on; tap *See a perspective* on any |
+| Check active model | hover the **🤖** in the header (no need to open Settings) |
 | Re-summarize (fresh) | **↻** in the panel header — ignores the saved copy |
 | Collapse | **→** in the header → panel slides away, tab returns |
 | Settings | **⚙** in the header |
@@ -278,6 +281,13 @@ HTML-escaped or static templates).
 ---
 
 ## Changelog
+
+### Unreleased
+
+- **Active-model indicator** — a 🤖 in the panel header shows the active
+  provider + model on hover (and opens Settings on click).
+- **Proofreading extended to Go deeper** — the provocations now get the same
+  spelling/grammar pass as the summary.
 
 ### 1.3.0
 
