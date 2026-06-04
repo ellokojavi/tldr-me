@@ -1,7 +1,8 @@
 # TL;DR Me — project rules for Claude
 
 A Firefox (MV3) extension that detects articles, extracts them with Mozilla
-Readability, and summarizes them via MiniMax or Gemini (OpenAI-compatible APIs).
+Readability, and summarizes them via MiniMax, Gemini, or Anthropic (Claude)
+(OpenAI-compatible APIs).
 
 ## Push rules
 
@@ -25,5 +26,5 @@ accuracy — not just the sections touched by this push.**
   errors; the `innerHTML` notices are sanitized/static and acceptable).
 - Prefer simple, single-purpose shell commands (use `git -C <repo>` and absolute
   paths rather than `cd …` chains) so they match the project permission allowlist.
-- Never commit API keys; the user's MiniMax/Gemini keys live only in
+- Never commit API keys; the user's MiniMax/Gemini/Anthropic keys live only in
   `browser.storage.local` at runtime, never in the repo.

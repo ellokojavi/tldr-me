@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TL;DR me: Article Summarizer",
   "version": "1.3.0",
-  "description": "Detects an article on the current page, extracts it, and shows a TL;DR summary powered by MiniMax or Gemini.",
+  "description": "Detects an article on the current page, extracts it, and shows a TL;DR summary powered by MiniMax, Gemini, or Anthropic (Claude).",
 
   "browser_specific_settings": {
     "gecko": {
@@ -27,6 +27,7 @@
   "host_permissions": [
     "https://api.minimax.io/*",
     "https://generativelanguage.googleapis.com/*",
+    "https://api.anthropic.com/*",
     "*://*/*"
   ],
 

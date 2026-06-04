@@ -7,8 +7,9 @@ or blog post, a little **TL;DR** tab appears on the right edge of the page. Clic
 it and you get a quick summary — a one-line takeaway plus the key points — right
 next to the article. You can copy it or send it to a friend on WhatsApp.
 
-It works in the language the article is written in, and you bring your own free
-AI key from either **MiniMax** or **Google Gemini** (more on that below).
+It works in the language the article is written in, and you bring your own
+AI key from **MiniMax**, **Google Gemini**, or **Anthropic (Claude)** (more on
+that below).
 
 ![TL;DR Me summarizing an article in its in-page side panel](docs/screenshot.jpg)
 
@@ -31,7 +32,7 @@ You don't need to be a developer to try this. Here's the whole thing:
 
 ### 2. Get a free AI key (pick one)
 
-The add-on needs a key from an AI service to write the summaries. Either works:
+The add-on needs a key from an AI service to write the summaries. Any one works:
 
 - **Google Gemini** — go to
   [aistudio.google.com/apikey](https://aistudio.google.com/apikey), sign in with
@@ -39,6 +40,9 @@ The add-on needs a key from an AI service to write the summaries. Either works:
   `AIza…`).
 - **MiniMax** — create an account at
   [platform.minimax.io](https://platform.minimax.io) and copy your API key.
+- **Anthropic (Claude)** — create a key at
+  [console.anthropic.com](https://console.anthropic.com) and copy it (it starts
+  with `sk-ant-…`).
 
 Keep the key handy — you'll paste it once in step 4. It stays only on your
 computer.
@@ -72,11 +76,11 @@ details.
 
 ## Features
 
-- **Choose your provider.** Add a **MiniMax** and/or **Gemini** API key. ⚙
-  Settings lists every provider, shows each one's configured model (or “no key”),
-  and lets you pick the **default** with a radio. The first key you add becomes the default
-  automatically; switch the default any time with the radio. Both use
-  OpenAI-compatible endpoints.
+- **Choose your provider.** Add a **MiniMax**, **Gemini**, and/or **Anthropic
+  (Claude)** API key. ⚙ Settings lists every provider, shows each one's configured
+  model (or “no key”), and lets you pick the **default** with a radio. The first
+  key you add becomes the default automatically; switch the default any time with
+  the radio. All three use OpenAI-compatible endpoints.
 - **Automatic article detection.** A lightweight check (Mozilla's
   [Readability](https://github.com/mozilla/readability) `isProbablyReaderable`)
   runs on the active tab and shows a green badge on the toolbar icon.
@@ -136,7 +140,7 @@ details.
                  └───────────────────────────┬────────────────────────────────────────┘
                                               │ summarize { title, text, lang }
                                               ▼
-                         background.js  ──▶  MiniMax or Gemini (chat/completions)
+                         background.js  ──▶  MiniMax / Gemini / Anthropic (chat/completions)
                               • provider selection
                               • language guard + retry
                               • <think> reasoning split out
@@ -191,6 +195,9 @@ Firefox re-prompts on every page.
   - **Gemini** — get a key at
     [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
     (default model `gemini-2.5-flash`).
+  - **Anthropic (Claude)** — get a key at
+    [console.anthropic.com](https://console.anthropic.com)
+    (default model `claude-haiku-4-5`).
 - Keys are stored in `browser.storage.local`.
 
 ### Make the key (and permission) persist across restarts
@@ -261,13 +268,14 @@ HTML-escaped or static templates).
 
 ## Privacy & permissions
 
-- **Article text is sent to your chosen provider** (`api.minimax.io` or
-  `generativelanguage.googleapis.com`) to generate the summary — declared via
-  the manifest's `data_collection_permissions` (`websiteContent`).
+- **Article text is sent to your chosen provider** (`api.minimax.io`,
+  `generativelanguage.googleapis.com`, or `api.anthropic.com`) to generate the
+  summary — declared via the manifest's `data_collection_permissions`
+  (`websiteContent`).
 - **Passive detection** reads only a yes/no "is this an article?" signal from
   the active tab; it does not transmit page content. Full extraction and the
   network call happen only when you click.
-- Outbound network access is limited to the two provider hosts.
+- Outbound network access is limited to the three provider hosts.
 - Your API key lives only in this browser's local extension storage. Do not
   distribute a build with a key embedded.
 
@@ -289,6 +297,9 @@ HTML-escaped or static templates).
 
 ### Unreleased
 
+- **Anthropic (Claude) provider** — add an `sk-ant-…` key to summarize with
+  Claude (default model `claude-haiku-4-5`) via Anthropic's OpenAI-compatible
+  endpoint, alongside MiniMax and Gemini.
 - **Scalable provider settings** — Settings now lists every provider with its
   configured model (or “no key”) and lets you set the **default** with a radio
   (the first key defaults automatically).
@@ -335,8 +346,9 @@ HTML-escaped or static templates).
 
 - Article extraction by Mozilla [Readability](https://github.com/mozilla/readability)
   (Apache License 2.0), vendored in `lib/`.
-- Summaries by the [MiniMax](https://platform.minimax.io) and
-  [Gemini](https://ai.google.dev) APIs.
+- Summaries by the [MiniMax](https://platform.minimax.io),
+  [Gemini](https://ai.google.dev), and [Anthropic](https://www.anthropic.com)
+  APIs.
 
 This project's own code is provided as-is for personal use. Add a license of
 your choice before distributing.

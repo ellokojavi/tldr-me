@@ -27,6 +27,22 @@ const PROVIDERS = {
     keyPattern: /^AIza[A-Za-z0-9_-]{35}$/,
     keyError: 'That doesn\'t look like a Gemini key — it should start with "AIza" and be 39 characters.',
   },
+  anthropic: {
+    label: "Anthropic",
+    // Anthropic's OpenAI-compatibility layer accepts the same chat-completions
+    // shape and Bearer auth, so the shared request code works. The two extra
+    // headers are required: the API version, and the opt-in that lets the
+    // request run from a browser context (the extension background page).
+    endpoint: "https://api.anthropic.com/v1/chat/completions",
+    defaultModel: "claude-haiku-4-5",
+    models: ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-7"],
+    keyPattern: /^sk-ant-[A-Za-z0-9_-]{20,}$/,
+    keyError: 'That doesn\'t look like an Anthropic key — it should start with "sk-ant-".',
+    extraHeaders: {
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+  },
 };
 
 // Validate an API key's format. Empty is allowed (means "clear this key").
@@ -45,7 +61,7 @@ function validateApiKey(provider, key) {
   return { ok: true };
 }
 // Preference order when picking a default provider (first one with a key wins).
-const PROVIDER_ORDER = ["minimax", "gemini"];
+const PROVIDER_ORDER = ["minimax", "gemini", "anthropic"];
 
 // Keep prompts well within the model's context window. ~4 chars/token is a rough
 // rule of thumb, so 48k chars is comfortably inside a large-context model.
@@ -56,12 +72,12 @@ const MAX_INPUT_CHARS = 48000;
 // first provider that has a key — so "the first key added" becomes the default.
 async function getActiveConfig() {
   const s = await browser.storage.local.get([
-    "minimaxApiKey", "geminiApiKey", "minimaxModel", "geminiModel", "activeProvider",
+    ...PROVIDER_ORDER.map((p) => `${p}ApiKey`),
+    ...PROVIDER_ORDER.map((p) => `${p}Model`),
+    "activeProvider",
   ]);
-  const keys = {
-    minimax: (s.minimaxApiKey || "").trim(),
-    gemini: (s.geminiApiKey || "").trim(),
-  };
+  const keys = {};
+  for (const p of PROVIDER_ORDER) keys[p] = (s[`${p}ApiKey`] || "").trim();
   let active = s.activeProvider;
   if (!active || !PROVIDERS[active] || !keys[active]) {
     active = PROVIDER_ORDER.find((p) => keys[p]) || null;
@@ -73,6 +89,7 @@ async function getActiveConfig() {
     endpoint: cfg.endpoint,
     apiKey: keys[active],
     model: s[`${active}Model`] || cfg.defaultModel,
+    extraHeaders: cfg.extraHeaders || null,
   };
 }
 
@@ -472,6 +489,7 @@ async function handleSummarize({ title, text, lang }) {
     res = await requestModel({
       endpoint: config.endpoint,
       apiKey: config.apiKey,
+      extraHeaders: config.extraHeaders,
       model: config.model,
       messages: [
         { role: "system", content: usedSystem },
@@ -495,6 +513,7 @@ async function handleSummarize({ title, text, lang }) {
     const retry = await requestModel({
       endpoint: config.endpoint,
       apiKey: config.apiKey,
+      extraHeaders: config.extraHeaders,
       model: config.model,
       maxTokens: 8192,
       messages: [
@@ -585,6 +604,7 @@ async function handleDiscuss({ title, text, lang }) {
     res = await requestModel({
       endpoint: config.endpoint,
       apiKey: config.apiKey,
+      extraHeaders: config.extraHeaders,
       model: config.model,
       maxTokens: 2048,
       messages: [
@@ -669,13 +689,14 @@ async function proofread(config, summary, articleScript) {
 // max_tokens must be generous: reasoning models spend output tokens "thinking"
 // before the answer, so a low cap can truncate the answer (e.g. TL;DR present
 // but Key points cut off).
-async function requestModel({ endpoint, apiKey, model, messages, maxTokens = 4096 }) {
+async function requestModel({ endpoint, apiKey, model, messages, maxTokens = 4096, extraHeaders = null }) {
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        ...(extraHeaders || {}),
       },
       body: JSON.stringify({
         model,

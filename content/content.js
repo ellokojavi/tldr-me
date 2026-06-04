@@ -46,8 +46,16 @@
       keyPattern: /^AIza[A-Za-z0-9_-]{35}$/,
       keyError: 'That doesn\'t look like a Gemini key — it should start with "AIza" and be 39 characters.',
     },
+    anthropic: {
+      label: "Anthropic",
+      models: ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-opus-4-7"],
+      defaultModel: "claude-haiku-4-5",
+      hint: "Get a key at console.anthropic.com.",
+      keyPattern: /^sk-ant-[A-Za-z0-9_-]{20,}$/,
+      keyError: 'That doesn\'t look like an Anthropic key — it should start with "sk-ant-".',
+    },
   };
-  const PROVIDER_ORDER = ["minimax", "gemini"];
+  const PROVIDER_ORDER = ["minimax", "gemini", "anthropic"];
 
   // Validate a key's format. Empty is allowed (means "clear this key").
   function validateKey(provider, key) {
@@ -564,7 +572,9 @@
     if (!el) return;
     try {
       const s = await browser.storage.local.get([
-        "minimaxApiKey", "geminiApiKey", "minimaxModel", "geminiModel", "activeProvider",
+        ...PROVIDER_ORDER.map((p) => `${p}ApiKey`),
+        ...PROVIDER_ORDER.map((p) => `${p}Model`),
+        "activeProvider",
       ]);
       const keyOf = (p) => (s[`${p}ApiKey`] || "").trim();
       let p = s.activeProvider;
@@ -711,7 +721,9 @@
   async function showSettings() {
     window.__articleSummarizer.open();
     const stored = await browser.storage.local.get([
-      "minimaxApiKey", "geminiApiKey", "minimaxModel", "geminiModel", "activeProvider",
+      ...PROVIDER_ORDER.map((p) => `${p}ApiKey`),
+      ...PROVIDER_ORDER.map((p) => `${p}Model`),
+      "activeProvider",
     ]);
     const keyOf = (p) => (stored[`${p}ApiKey`] || "").trim();
     const configured = () => PROVIDER_ORDER.filter((p) => keyOf(p));
