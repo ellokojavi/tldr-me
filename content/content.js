@@ -435,11 +435,19 @@
         margin-top: 10px; background: #c53030; color: #fff; border: none;
         border-radius: 6px; padding: 6px 12px; cursor: pointer;
       }
-      #${PANEL_ID} .asz-keyform input,
+      #${PANEL_ID} .asz-keyform input:not([type="radio"]):not([type="checkbox"]),
       #${PANEL_ID} .asz-keyform select {
         width: 100%; padding: 9px 10px; font-size: 14px; margin: 6px 0 10px;
         border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box;
         background: #ffffff; color: #1a202c;
+      }
+      /* Native radios/checkboxes — defeat the rule above and any host-page
+         input{width:100%} leakage that would stretch/center them. */
+      #${PANEL_ID} .asz-keyform input[type="radio"],
+      #${PANEL_ID} .asz-keyform input[type="checkbox"] {
+        width: auto !important; height: auto !important; margin: 0 !important;
+        padding: 0 !important; flex: 0 0 auto !important; box-shadow: none !important;
+        appearance: auto; -webkit-appearance: auto;
       }
       #${PANEL_ID} .asz-keyform button {
         background: #2b6cb0; color: #fff; border: none; border-radius: 6px;
@@ -459,21 +467,25 @@
         margin: 4px 0 6px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;
       }
       #${PANEL_ID} .asz-prov-row {
-        display: flex; align-items: center; gap: 9px; padding: 9px 11px;
-        font-size: 13px; cursor: pointer; background: #ffffff;
+        display: flex !important; flex-direction: row !important;
+        align-items: center !important; justify-content: flex-start !important;
+        text-align: left !important; gap: 9px; padding: 9px 11px; width: 100%;
+        font-size: 13px; cursor: pointer; background: #ffffff; box-sizing: border-box;
       }
       #${PANEL_ID} .asz-prov-row + .asz-prov-row { border-top: 1px solid #edf2f7; }
-      #${PANEL_ID} .asz-prov-row input[type="radio"] { margin: 0; }
       #${PANEL_ID} .asz-prov-name { font-weight: 600; color: #1a202c; }
-      #${PANEL_ID} .asz-prov-status { margin-left: auto; font-size: 12px; color: #718096; }
+      #${PANEL_ID} .asz-prov-status {
+        margin-left: auto; font-size: 12px; color: #718096; white-space: nowrap;
+      }
       #${PANEL_ID} .asz-prov-row.asz-disabled { cursor: default; }
       #${PANEL_ID} .asz-prov-row.asz-disabled .asz-prov-name,
       #${PANEL_ID} .asz-prov-row.asz-disabled .asz-prov-status { color: #a0aec0; }
       #${PANEL_ID} .asz-check {
-        display: flex; align-items: center; gap: 8px; font-size: 13px;
+        display: flex !important; flex-direction: row !important;
+        align-items: center !important; justify-content: flex-start !important;
+        text-align: left !important; gap: 8px; font-size: 13px;
         color: #2d3748; margin: 8px 0 0; cursor: pointer; font-weight: 600;
       }
-      #${PANEL_ID} .asz-check input { margin: 0; }
       #${PANEL_ID} .asz-status {
         font-size: 12px; color: #2f855a; margin: 10px 0 0; font-weight: 600;
       }
