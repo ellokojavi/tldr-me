@@ -1303,26 +1303,49 @@
     document.body.appendChild(iframe);
   }
 
-  // Extract the article. Returns { title, text, lang } or null.
-  function extractArticle() {
+  // Run Readability on a document and normalize the result, or return null.
+  // No isProbablyReaderable gate here: the user explicitly asked to summarize,
+  // so we just try to parse (the heuristic still guards whether the tab appears).
+  function parseReadable(doc, fallbackLang) {
     try {
-      if (typeof isProbablyReaderable === "function" && !isProbablyReaderable(document)) {
-        return null;
-      }
-      const docClone = document.cloneNode(true);
+      const docClone = doc.cloneNode(true);
       const reader = new Readability(docClone);
       const result = reader.parse();
       if (!result || !result.textContent || result.textContent.trim().length < 200) {
         return null;
       }
       return {
-        title: result.title || document.title || "",
+        title: result.title || doc.title || "",
         text: result.textContent.trim(),
         contentHtml: result.content || "", // structured HTML, used for printing
-        lang: document.documentElement.lang || "",
+        lang: (doc.documentElement && doc.documentElement.lang) || fallbackLang || "",
       };
     } catch (e) {
       console.error("Article Summarizer: extraction failed", e);
+      return null;
+    }
+  }
+
+  // Extract the article from the live DOM. Returns { title, text, lang } or null.
+  function extractArticle() {
+    return parseReadable(document, "");
+  }
+
+  // Last-resort fallback: when the live DOM no longer parses (common on sites
+  // whose ad/paywall/consent scripts rewrite the page after load), ask the
+  // background to re-fetch the original HTML — its host_permissions bypass the
+  // page's CSP/CORS — and run Readability on that pristine markup instead.
+  // Silent and best-effort: returns null on any failure.
+  async function extractViaRefetch() {
+    try {
+      const resp = await browser.runtime.sendMessage({
+        type: "fetchArticleHtml",
+        url: location.href,
+      });
+      if (!resp || !resp.ok || !resp.html) return null;
+      const doc = new DOMParser().parseFromString(resp.html, "text/html");
+      return parseReadable(doc, document.documentElement.lang || "");
+    } catch (_) {
       return null;
     }
   }
@@ -1387,7 +1410,10 @@
     }
 
     showLoading();
-    const article = extractArticle();
+    // Try the live DOM first; if that fails (e.g. the page's own scripts have
+    // since rewritten it), silently re-fetch the original HTML and parse that.
+    let article = extractArticle();
+    if (!article) article = await extractViaRefetch();
     if (!article) {
       showError(
         "This page doesn't look like an article, or the main text couldn't be detected."

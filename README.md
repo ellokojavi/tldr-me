@@ -84,6 +84,10 @@ details.
 - **Automatic article detection.** A lightweight check (Mozilla's
   [Readability](https://github.com/mozilla/readability) `isProbablyReaderable`)
   runs on the active tab and shows a green badge on the toolbar icon.
+- **Resilient extraction.** When you click, it parses the live page; if a site's
+  own ad/paywall/consent scripts have since rewritten the DOM and parsing fails,
+  it silently re-fetches the original page HTML and parses that instead — no
+  reload needed.
 - **On-load "TL;DR" tab.** A small tab appears on the right edge of article
   pages *without* loading the heavy summarizer — it's fetched only when you
   click.
@@ -145,6 +149,7 @@ details.
                               • language guard + retry
                               • <think> reasoning split out
                               • localized "Source" label
+                              • re-fetch original HTML if the live DOM won't parse
 ```
 
 The heavy summarizer (`Readability.js` + `content.js`) is injected **only when
@@ -275,7 +280,12 @@ HTML-escaped or static templates).
 - **Passive detection** reads only a yes/no "is this an article?" signal from
   the active tab; it does not transmit page content. Full extraction and the
   network call happen only when you click.
-- Outbound network access is limited to the three provider hosts.
+- **Re-fetch fallback.** If the live page can't be parsed, the extension makes a
+  one-off request to the **same page's own URL** (without your cookies) to read
+  its original HTML. No page data leaves your machine in this step — it only
+  re-downloads the article you're already on.
+- Outbound network access is limited to the three provider hosts plus, only as
+  the fallback above, the URL of the page you're summarizing.
 - Your API key lives only in this browser's local extension storage. Do not
   distribute a build with a key embedded.
 
@@ -297,6 +307,11 @@ HTML-escaped or static templates).
 
 ### Unreleased
 
+- **Resilient extraction** — clicking now parses the live page directly (no
+  `isProbablyReaderable` gate), and if a site's own scripts have rewritten the
+  DOM so it no longer parses, the extension silently re-fetches the original
+  page HTML and parses that — fixing pages like ad/paywall-heavy news sites that
+  previously showed "doesn't look like an article."
 - **Anthropic (Claude) provider** — add an `sk-ant-…` key to summarize with
   Claude (default model `claude-haiku-4-5`) via Anthropic's OpenAI-compatible
   endpoint, alongside MiniMax and Gemini.

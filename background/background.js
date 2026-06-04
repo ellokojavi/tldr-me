@@ -347,12 +347,36 @@ browser.runtime.onMessage.addListener((message, sender) => {
   if (message && message.type === "getProviderState") {
     return getProviderState();
   }
+  if (message && message.type === "fetchArticleHtml") {
+    return handleFetchArticleHtml(message);
+  }
   if (message && message.type === "openOptions") {
     browser.runtime.openOptionsPage();
     return Promise.resolve({ ok: true });
   }
   return false;
 });
+
+// Re-fetch a page's original HTML so the content script can parse it when the
+// live, script-mutated DOM no longer yields an article. Runs with the
+// extension's host_permissions (bypassing the page's CSP/CORS) and omits
+// credentials — we want the public server markup, not a logged-in/paywalled
+// variant, and we avoid sending the user's cookies. Best-effort: { ok, html }.
+async function handleFetchArticleHtml(message) {
+  const url = message && message.url;
+  if (!url || !/^https?:\/\//i.test(url)) return { ok: false };
+  try {
+    const resp = await fetch(url, { credentials: "omit", redirect: "follow" });
+    if (!resp.ok) return { ok: false };
+    const contentType = resp.headers.get("content-type") || "";
+    if (contentType && !/html/i.test(contentType)) return { ok: false };
+    const html = await resp.text();
+    if (!html || html.length < 500) return { ok: false };
+    return { ok: true, html };
+  } catch (_) {
+    return { ok: false };
+  }
+}
 
 // Snapshot of which providers have a key + which is the default. Used by the
 // Settings UI to render the provider list.
