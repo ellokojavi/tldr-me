@@ -477,6 +477,11 @@
       #${PANEL_ID} .asz-prov-status {
         margin-left: auto; font-size: 12px; color: #718096; white-space: nowrap;
       }
+      #${PANEL_ID} .asz-prov-model {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px; color: #4a5568; background: #edf2f7;
+        padding: 2px 7px; border-radius: 999px;
+      }
       #${PANEL_ID} .asz-prov-row.asz-disabled { cursor: default; }
       #${PANEL_ID} .asz-prov-row.asz-disabled .asz-prov-name,
       #${PANEL_ID} .asz-prov-row.asz-disabled .asz-prov-status { color: #a0aec0; }
@@ -749,11 +754,13 @@
       const act = activeProvider();
       listEl.innerHTML = PROVIDER_ORDER.map((p) => {
         const has = keyOf(p);
+        const model = stored[`${p}Model`] || PROVIDERS[p].defaultModel;
+        const status = has ? escapeHtml(model) : "no key";
         return (
           `<label class="asz-prov-row${has ? "" : " asz-disabled"}">` +
           `<input type="radio" name="asz-default" value="${p}"${p === act ? " checked" : ""}${has ? "" : " disabled"}>` +
           `<span class="asz-prov-name">${escapeHtml(PROVIDERS[p].label)}</span>` +
-          `<span class="asz-prov-status">${has ? "key set" : "no key"}</span>` +
+          `<span class="asz-prov-status${has ? " asz-prov-model" : ""}">${status}</span>` +
           `</label>`
         );
       }).join("");

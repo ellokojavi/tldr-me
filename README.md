@@ -73,8 +73,8 @@ details.
 ## Features
 
 - **Choose your provider.** Add a **MiniMax** and/or **Gemini** API key. ⚙
-  Settings lists every provider, shows which have a key, and lets you pick the
-  **default** with a radio. The first key you add becomes the default
+  Settings lists every provider, shows each one's configured model (or “no key”),
+  and lets you pick the **default** with a radio. The first key you add becomes the default
   automatically; switch the default any time with the radio. Both use
   OpenAI-compatible endpoints.
 - **Automatic article detection.** A lightweight check (Mozilla's
@@ -181,9 +181,10 @@ Firefox re-prompts on every page.
 
 - **Provider, API key & model.** Open any article, click the **TL;DR** tab, and
   choose a provider + paste its API key when prompted — or use the **⚙ Settings**
-  button in the panel header at any time. Settings shows a **provider list** (which
-  ones have a key) with a radio to set the **default**, plus an add/change-a-key
-  form. Each provider keeps its own key and model; the first key becomes the
+  button in the panel header at any time. Settings shows a **provider list**
+  (each provider's configured model, or “no key”) with a radio to set the
+  **default**, plus an add/change-a-key form. Each provider keeps its own key and
+  model; the first key becomes the
   default automatically, and you switch the default any time with the radio.
   - **MiniMax** — get a key at [platform.minimax.io](https://platform.minimax.io)
     (default model `MiniMax-M2.7`).
@@ -288,9 +289,9 @@ HTML-escaped or static templates).
 
 ### Unreleased
 
-- **Scalable provider settings** — Settings now lists every provider (which have
-  a key) and lets you set the **default** with a radio (the first key defaults
-  automatically).
+- **Scalable provider settings** — Settings now lists every provider with its
+  configured model (or “no key”) and lets you set the **default** with a radio
+  (the first key defaults automatically).
 - **Active-model indicator** — a 🤖 in the panel header shows the active
   provider + model on hover.
 - **Proofreading extended to Go deeper** — the provocations now get the same
