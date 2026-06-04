@@ -776,27 +776,19 @@
       });
     }
 
-    // The add/edit form for the selected provider, with a contextual default control.
+    // The add/edit form for the selected provider. The default provider is
+    // chosen via the radio list above, not here.
     function renderFields(p) {
-      const hasKey = keyOf(p);
       const noKeysAtAll = configured().length === 0;
-      let defaultControl;
-      if (noKeysAtAll) {
-        // First key overall → it becomes the default automatically.
-        defaultControl =
-          `<p class="asz-note">This will be your default provider.</p>` +
-          `<input type="hidden" data-asz="make-default" value="1">`;
-      } else {
-        const checked = p === activeProvider() ? " checked" : "";
-        defaultControl =
-          `<label class="asz-check"><input type="checkbox" data-asz="make-default"${checked}> Make this the default provider</label>`;
-      }
+      const firstKeyNote = noKeysAtAll
+        ? `<p class="asz-note">This will be your default provider.</p>`
+        : "";
       fields.innerHTML =
         `<label class="asz-label">${escapeHtml(PROVIDERS[p].label)} API key</label>` +
         `<input type="password" data-asz="key" value="${escapeAttr(keyOf(p))}" placeholder="Paste API key" autocomplete="off" />` +
         `<label class="asz-label">Model</label>` +
         `<select data-asz="model">${modelOptionsHtml(p, stored[`${p}Model`])}</select>` +
-        defaultControl +
+        firstKeyNote +
         `<p class="asz-note">${escapeHtml(PROVIDERS[p].hint)}</p>`;
     }
 
@@ -812,12 +804,9 @@
       const p = providerSel.value;
       const key = fields.querySelector('[data-asz="key"]').value.trim();
       const model = fields.querySelector('[data-asz="model"]').value;
-      const mdEl = fields.querySelector('[data-asz="make-default"]');
-      const makeDefault = mdEl
-        ? mdEl.type === "checkbox"
-          ? mdEl.checked
-          : mdEl.value === "1"
-        : false;
+      // The default provider is set via the radio list, not here. The backend
+      // still auto-defaults the very first key that gets saved.
+      const makeDefault = false;
       const check = validateKey(p, key);
       if (!check.ok) {
         setStatus(check.message, true);

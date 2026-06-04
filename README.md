@@ -75,8 +75,8 @@ details.
 - **Choose your provider.** Add a **MiniMax** and/or **Gemini** API key. ⚙
   Settings lists every provider, shows which have a key, and lets you pick the
   **default** with a radio. The first key you add becomes the default
-  automatically; when you add another, you choose whether to make it the default.
-  Both use OpenAI-compatible endpoints.
+  automatically; switch the default any time with the radio. Both use
+  OpenAI-compatible endpoints.
 - **Automatic article detection.** A lightweight check (Mozilla's
   [Readability](https://github.com/mozilla/readability) `isProbablyReaderable`)
   runs on the active tab and shows a green badge on the toolbar icon.
@@ -184,7 +184,7 @@ Firefox re-prompts on every page.
   button in the panel header at any time. Settings shows a **provider list** (which
   ones have a key) with a radio to set the **default**, plus an add/change-a-key
   form. Each provider keeps its own key and model; the first key becomes the
-  default automatically, and adding another asks whether to make it the default.
+  default automatically, and you switch the default any time with the radio.
   - **MiniMax** — get a key at [platform.minimax.io](https://platform.minimax.io)
     (default model `MiniMax-M2.7`).
   - **Gemini** — get a key at
@@ -289,8 +289,8 @@ HTML-escaped or static templates).
 ### Unreleased
 
 - **Scalable provider settings** — Settings now lists every provider (which have
-  a key), lets you set the **default** with a radio, and asks whether to make a
-  newly added key the default (the first key defaults automatically).
+  a key) and lets you set the **default** with a radio (the first key defaults
+  automatically).
 - **Active-model indicator** — a 🤖 in the panel header shows the active
   provider + model on hover.
 - **Proofreading extended to Go deeper** — the provocations now get the same
