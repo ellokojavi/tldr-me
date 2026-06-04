@@ -728,7 +728,7 @@
         `<div class="asz-settings-actions">` +
         `<button data-asz="save-settings">Save</button>` +
         (lastSummary
-          ? `<button class="asz-secondary" data-asz="cancel-settings">Back to summary</button>`
+          ? `<button class="asz-secondary" data-asz="cancel-settings">Cancel</button>`
           : "") +
         `</div>` +
         `<p class="asz-status" data-asz="settings-status"></p>` +
