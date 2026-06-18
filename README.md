@@ -131,6 +131,18 @@ details.
 
 ---
 
+## Example output
+
+A summary shared to WhatsApp — the **TL;DR** and **Key points** followed by the
+clean article link and a small attribution footer (kept last so the link
+preview stays the article):
+
+<p align="center">
+  <img src="docs/whatsapp-example.jpg" alt="A TL;DR Me summary of a Bloomberg article shared as a WhatsApp message" width="360">
+</p>
+
+---
+
 ## How it works
 
 ```
