@@ -20,8 +20,8 @@ side panel.*
   <img src="docs/whatsapp-example.jpg" alt="A TL;DR Me summary shared as a WhatsApp message" width="360">
 </p>
 
-*…and the same summary shared to WhatsApp — TL;DR and Key points, the clean
-article link, and a small attribution footer.*
+*A summary shared to WhatsApp — TL;DR and Key points, the clean article link,
+and a small attribution footer.*
 
 ---
 
