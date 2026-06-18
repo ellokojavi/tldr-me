@@ -16,6 +16,13 @@ that below).
 *TL;DR Me reading an article and showing the TL;DR box plus Key points in the
 side panel.*
 
+<p align="center">
+  <img src="docs/whatsapp-example.jpg" alt="A TL;DR Me summary shared as a WhatsApp message" width="360">
+</p>
+
+*…and the same summary shared to WhatsApp — TL;DR and Key points, the clean
+article link, and a small attribution footer.*
+
 ---
 
 ## Try it on your computer (no coding needed)
@@ -128,18 +135,6 @@ details.
   header shows the active provider + model on hover.
 - **CSS-isolated UI.** The panel forces its own fonts and list styles so host
   pages can't bleed into the summary's appearance.
-
----
-
-## Example output
-
-A summary shared to WhatsApp — the **TL;DR** and **Key points** followed by the
-clean article link and a small attribution footer (kept last so the link
-preview stays the article):
-
-<p align="center">
-  <img src="docs/whatsapp-example.jpg" alt="A TL;DR Me summary of a Bloomberg article shared as a WhatsApp message" width="360">
-</p>
 
 ---
 
