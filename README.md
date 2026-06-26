@@ -303,7 +303,9 @@ HTML-escaped or static templates).
 - Same-script language mix-ups (e.g. a Spanish article summarized in English)
   aren't caught by the language guard — it detects cross-script contamination
   (the CJK-in-Latin case). Add a word-level language detector if you need this.
-- Very long articles are truncated (~48k characters) before summarizing.
+- Very long articles are truncated (~48k characters) before summarizing; when
+  this happens the panel shows a warning that the summary may not cover the full
+  article.
 - WhatsApp sharing opens the installed app via the `whatsapp://` scheme with the
   summary prefilled; you pick the recipient. (The `wa.me` web link was avoided
   because its desktop handoff dropped everything but the URL.)
@@ -314,6 +316,10 @@ HTML-escaped or static templates).
 
 ### Unreleased
 
+- **Long-article warning** — when an article exceeds the ~48k-character input
+  limit and is trimmed before summarizing, the panel now shows a prominent
+  warning that the summary may not include all of the article's content
+  (previously a faint note at the very bottom).
 - **Resilient extraction** — clicking now parses the live page directly (no
   `isProbablyReaderable` gate), and if a site's own scripts have rewritten the
   DOM so it no longer parses, the extension silently re-fetches the original

@@ -870,6 +870,12 @@
     // Copy text = the full summary plus the source line.
     lastSummary = lastSummaryRaw + lastSourceLine;
     let html = title ? `<p class="asz-title">${escapeHtml(title)}</p>` : "";
+    if (truncated) {
+      html +=
+        `<div class="asz-warn">⚠ This article is longer than the 48,000-character limit, ` +
+        `so it was trimmed before summarizing — the summary may not include all of the ` +
+        `article's content.</div>`;
+    }
     if (langWarning) {
       html +=
         `<div class="asz-warn">⚠ This summary may not be in the article's language. ` +
@@ -915,10 +921,6 @@
         `<summary>Show model reasoning</summary>` +
         `<div class="asz-think-body">${renderSummary(thinking)}</div>` +
         `</details>`;
-    }
-    if (truncated) {
-      html +=
-        `<div class="asz-note">Note: the article was long and was truncated before summarizing.</div>`;
     }
     const panel = setBody(html);
     panel.querySelector('[data-asz="copy"]').addEventListener("click", (e) => {
